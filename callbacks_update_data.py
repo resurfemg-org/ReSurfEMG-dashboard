@@ -11,7 +11,7 @@ import numpy as np
 import os
 from dash import Input, Output, callback, ctx, State, html, ALL, callback_context
 from app import app, variables
-import resurfemg.converter_functions as cv
+import resurfemg.data_connector.converter_functions as cv
 from pathlib import Path
 from dash.exceptions import PreventUpdate
 from definitions import (PATH_BTN, FILE_PATH_INPUT, STORED_CWD, CWD,

@@ -1,11 +1,14 @@
 import base64
 import dash_bootstrap_components as dbc
+from resurfemg.preprocessing import ecg_removal as ecg_rm
+from resurfemg.preprocessing import envelope as evl
+from resurfemg.preprocessing import filtering as filt
+#import resurfemg.postprocessing.features as feat
 import definitions
 import json
 import numpy as np
 import plotly.graph_objects as go
-import resurfemg.helper_functions as hf
-import resurfemg.multi_lead_type as mlt
+
 import trace_updater
 from dash import dcc, html
 from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, GatingMethod
@@ -387,14 +390,14 @@ def get_envelope(envelope_method: int, emg_signal, sample_rate):
     if envelope_method == EnvelopeMethod.RMS.value:
         # I set the window here to 100ms, but this may be changed
         if emg_signal.ndim == 1:
-            emg_env = hf.full_rolling_rms(abs(emg_signal), int(sample_rate / 10))
+            emg_env = evl.full_rolling_rms(abs(emg_signal), int(sample_rate / 10))
         else:
-            emg_env = np.array([hf.full_rolling_rms(lead, int(sample_rate / 10)) for lead in abs(emg_signal)])
+            emg_env = np.array([evl.full_rolling_rms(lead, int(sample_rate / 10)) for lead in abs(emg_signal)])
     elif envelope_method == EnvelopeMethod.FILTERING.value:
         # THIS SHOULD BE CHANGED TO LOW PASS!
         cut_frequency = check_default_cut_frequency(definitions.default_envelope_cut_frequency,
                                                     sample_rate)
-        emg_env = hf.emg_highpass_butter(abs(emg_signal), cut_frequency, sample_rate)
+        emg_env = filt.emg_highpass_butter(abs(emg_signal), cut_frequency, sample_rate)
     else:
         emg_env = emg_signal
 
@@ -410,8 +413,8 @@ def apply_ecg_removal(removal_method: int, emg_signal, sample_rate, gating_metho
         ecg_lead = emg_signal[0]
         titles.append("Filtered Track 0")
         for lead in range(1, emg_signal.shape[0]):
-            emg_ica = mlt.compute_ICA_two_comp_selective(emg_signal, False, (0, lead))
-            emg_clean = hf.pick_lowest_correlation_array(emg_ica, ecg_lead)
+            emg_ica = ecg_rm.compute_ICA_two_comp_selective(emg_signal, False, (0, lead))
+            emg_clean = ecg_rm.pick_lowest_correlation_array(emg_ica, ecg_lead)
             emg_ecg.append(emg_clean)
             titles.append("Filtered Track " + str(lead))
 
@@ -422,7 +425,7 @@ def apply_ecg_removal(removal_method: int, emg_signal, sample_rate, gating_metho
         # TODO: change with QRS identification when available in library
         peak_width = 0.001
         peak_fraction = 0.40
-        ecg_rms = hf.full_rolling_rms(emg_signal[0, :], 10)
+        ecg_rms = evl.full_rolling_rms(emg_signal[0, :], 10)
         peak_height = peak_fraction * (max(ecg_rms) - min(ecg_rms))
         ecg_peaks, _ = find_peaks(ecg_rms,
                                   height=peak_height,
@@ -431,7 +434,7 @@ def apply_ecg_removal(removal_method: int, emg_signal, sample_rate, gating_metho
 
         titles.append("Filtered Track 0")
         for lead in range(1, emg_signal.shape[0]):
-            emg_clean = hf.gating(emg_signal[lead, :], ecg_peaks, method=gating_method)
+            emg_clean = ecg_rm.gating(emg_signal[lead, :], ecg_peaks, method=gating_method)
             emg_ecg.append(emg_clean)
             titles.append("Filtered Track " + str(lead))
 

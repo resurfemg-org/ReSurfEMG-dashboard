@@ -6,15 +6,18 @@ This file contains functions to work functions from the ReSurfEMG library.
 """
 
 import dash
+from resurfemg.preprocessing import filtering as filt
 import definitions
 import json
 import numpy as np
 import pandas as pd
 import utils
+
 from app import variables
 from dash import Input, Output, State, callback, MATCH, ALL, html, ctx, dcc
 from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, FILE_IDENTIFIER, GatingMethod
-from resurfemg import helper_functions as hf
+#from resurfemg import helper_functions as hf
+
 
 card_counter = 0
 json_parameters = []
@@ -93,11 +96,11 @@ def show_data(click,
     # if data have been loaded, apply the processing
     if emg_data is not None:
         # apply cut
-        emg_cut = hf.bad_end_cutter_for_samples(emg_data, cut_percent, cut_tolerance)
+        emg_cut = filt.bad_end_cutter_for_samples(emg_data, cut_percent, cut_tolerance)
         json_parameters.append(utils.build_cutter_params_json(1, cut_percent, cut_tolerance))
 
         # apply filter
-        emg_data_filtered = hf.emg_bandpass_butter_sample(emg_cut,
+        emg_data_filtered = filt.emg_bandpass_butter_sample(emg_cut,
                                                           low_freq,
                                                           high_freq,
                                                           sample_rate)
@@ -105,7 +108,7 @@ def show_data(click,
 
         # remove filtering artifacts (this is done automatically, no params are
         # displayed in the GUI
-        emg_cut_final = hf.bad_end_cutter_for_samples(emg_data_filtered, 3, 5)
+        emg_cut_final = filt.bad_end_cutter_for_samples(emg_data_filtered, 3, 5)
         json_parameters.append(utils.build_cutter_params_json(3, 3, 5))
 
         # remove ECG
@@ -136,7 +139,7 @@ def show_data(click,
                 high_cut_input = additional_high[idx_high]
                 high_cut = utils.check_default_cut_frequency(high_cut_input, sample_rate)
 
-                new_step_emg = hf.emg_bandpass_butter_sample(new_step_emg,
+                new_step_emg = filt.emg_bandpass_butter_sample(new_step_emg,
                                                              low_cut, high_cut,
                                                              sample_rate)
                 json_parameters.append(utils.build_bandpass_params_json(len(json_parameters) + 1,
@@ -147,7 +150,7 @@ def show_data(click,
                 idx = utils.get_idx_dict_list(additional_low_idx, 'index', card_id)
                 low_cut = additional_low[idx]
 
-                new_step_emg = hf.emg_highpass_butter(new_step_emg,
+                new_step_emg = filt.emg_highpass_butter(new_step_emg,
                                                       low_cut,
                                                       sample_rate)
                 json_parameters.append(utils.build_highpass_params_json(len(json_parameters) + 1,
