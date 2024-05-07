@@ -315,9 +315,12 @@ def get_ecg_removal_layout(id_removal, value=definitions.default_ecg_removal_val
                                {"label": "None", "value": EcgRemovalMethods.NONE.value},
                            ],
                            value=value
-                       )],
+                       ),
+                       ],
                       id={"type": "ecg-removal-card", "index": id_removal_index}
                       )
+    if value == EcgRemovalMethods.GATING:
+        layout.children += add_gating_method_options(id_removal_index)
 
     return layout
 
