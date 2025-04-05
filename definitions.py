@@ -47,7 +47,7 @@ default_bandpass_high = 450
 default_first_cut_percentage = 3
 default_first_cut_tolerance = 5
 default_envelope_cut_frequency = 150
-default_ecg_removal_value = EcgRemovalMethods.ICA
+default_ecg_removal_value = EcgRemovalMethods.GATING
 default_envelope_value = EnvelopeMethod.FILTERING
 
 # default values for features extraction

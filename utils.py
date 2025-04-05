@@ -5,7 +5,6 @@ import json
 import numpy as np
 import plotly.graph_objects as go
 import resurfemg.helper_functions as hf
-import resurfemg.multi_lead_type as mlt
 import trace_updater
 from dash import dcc, html
 from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, GatingMethod
@@ -307,7 +306,6 @@ def get_ecg_removal_layout(id_removal, value=definitions.default_ecg_removal_val
                        dbc.Select(
                            id=id_removal,
                            options=[
-                               {"label": "ICA", "value": EcgRemovalMethods.ICA.value},
                                {"label": "Gating", "value": EcgRemovalMethods.GATING.value},
                                {"label": "None", "value": EcgRemovalMethods.NONE.value},
                            ],
@@ -406,19 +404,7 @@ def apply_ecg_removal(removal_method: int, emg_signal, sample_rate, gating_metho
     emg_ecg = []
     titles = []
 
-    if removal_method == EcgRemovalMethods.ICA.value:
-        ecg_lead = emg_signal[0]
-        titles.append("Filtered Track 0")
-        for lead in range(1, emg_signal.shape[0]):
-            emg_ica = mlt.compute_ICA_two_comp_selective(emg_signal, False, (0, lead))
-            emg_clean = hf.pick_lowest_correlation_array(emg_ica, ecg_lead)
-            emg_ecg.append(emg_clean)
-            titles.append("Filtered Track " + str(lead))
-
-        emg_ecg = np.array(emg_ecg)
-        emg_ecg = np.insert(emg_ecg, 0, ecg_lead, 0)
-
-    elif removal_method == EcgRemovalMethods.GATING.value:
+    if removal_method == EcgRemovalMethods.GATING.value:
         # TODO: change with QRS identification when available in library
         peak_width = 0.001
         peak_fraction = 0.40
