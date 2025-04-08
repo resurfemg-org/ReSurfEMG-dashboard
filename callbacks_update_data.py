@@ -146,14 +146,11 @@ def read_file(file_path: str) -> np.ndarray:
         Returns:
             A ndarray containing the leads, or None if the file is not valid
     """
-    file_extension = os.path.splitext(file_path)[-1]
     try:
-        if file_extension == '.Poly5':
-            data = cv.poly5unpad(file_path)
-        elif file_extension == '.npy':
-            data = np.load(file_path)
-        else:
-            raise Exception
+        try:
+            data, *_ = cv.load_file(file_path, verbose=False)
+        except Exception as e:
+            raise Exception(f"Error loading file: {e}")
     except:
         data = None
 
