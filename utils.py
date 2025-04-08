@@ -84,7 +84,7 @@ def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
                 )
             ),
                 hf_x=time_array_processed,
-                hf_y=y_default_process,
+                hf_y=np.ascontiguousarray(y_default_process),
             )
 
         fig.add_trace(go.Scatter(
@@ -95,7 +95,7 @@ def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
             )
         ),
             hf_x=time_array,
-            hf_y=y,
+            hf_y=np.ascontiguousarray(y),
             secondary_y=True
         )
 
@@ -179,7 +179,7 @@ def add_ventilator_graphs(emg_data, frequency, titles=None):
             )
         ),
             hf_x=time_array,
-            hf_y=y,
+            hf_y=np.ascontiguousarray(y),
         )
 
         fig.update_layout(
@@ -225,7 +225,7 @@ def get_time_array(data_size, frequency):
 
 # function needed to update graphs using plotly_resampler
 def get_dict(graph_id_dict, relayoutdata):
-    return graph_dict_raw.get(graph_id_dict["index"]).construct_update_data(relayoutdata)
+    return graph_dict_raw.get(graph_id_dict["index"])._construct_update_data(relayoutdata)
 
 
 # function needed to update graphs using plotly_resampler
