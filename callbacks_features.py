@@ -9,6 +9,7 @@ from typing import List
 
 from dash import Input, Output, callback, dcc, ctx, State, html, ALL, callback_context
 from app import app, variables
+from resurfemg.postprocessing import features as feat
 from resurfemg import helper_functions as hf
 import numpy as np
 import pandas as pd
@@ -28,10 +29,14 @@ class Breath:
     def __init__(self,
                  start_sample: int = None,
                  stop_sample: int = None,
-                 amplitude: np.array = None):
+                 peak_sample: int = None,
+                 amplitude: np.array = None,
+                 baseline: np.array = None):
         self.start_sample = start_sample
         self.stop_sample = stop_sample
         self.amplitude = amplitude
+        self.baseline = baseline
+        self.peak_sample = peak_sample
 
 
 # on loading add the PAGE
@@ -108,21 +113,21 @@ def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_inp
         start_sample = 0
         stop_sample = time_array.shape[0]
 
-    breaths = get_breaths(data[int(lead_n)], start_sample, stop_sample, method_stat)
+    breaths = get_breaths(int(lead_n), start_sample, stop_sample, method_stat)
 
     features_df = create_features_dataframe(breaths, frequency)
 
     features = [{ComputedFeatures.BREATHS_COUNT: len(breaths),
-                 ComputedFeatures.MAX_AMPLITUDE: str(round(features_df['maxima'].mean(), 2)) + ' ± ' + str(
-                     round(features_df['maxima'].std(), 2)),
-                 ComputedFeatures.AUC: str(round(features_df['auc'].mean(), 2)) + ' ± ' + str(
-                     round(features_df['auc'].std(), 2)),
-                 ComputedFeatures.RISE_TIME: str(round(features_df['rise_time'].mean(), 2)) + ' ± ' + str(
-                     round(features_df['rise_time'].std(), 2)),
-                 ComputedFeatures.ACTIVITY_DURATION: str(round(features_df['length'].mean(), 2)) + ' ± ' + str(
-                     round(features_df['length'].std(), 2)),
-                 ComputedFeatures.PEAK_POSITION: str(round(features_df['peak_position'].mean(), 2)) + ' ± ' + str(
-                     round(features_df['peak_position'].std(), 2))}]
+                 ComputedFeatures.MAX_AMPLITUDE: str(np.round(features_df['maxima'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
+                     np.round(features_df['maxima'].to_numpy().flatten().std(), 2)),
+                 ComputedFeatures.AUC: str(np.round(features_df['auc'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
+                     np.round(features_df['auc'].to_numpy().flatten().std(), 2)),
+                 ComputedFeatures.RISE_TIME: str(np.round(features_df['rise_time'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
+                     np.round(features_df['rise_time'].to_numpy().flatten().std(), 2)),
+                 ComputedFeatures.ACTIVITY_DURATION: str(np.round(features_df['length'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
+                     np.round(features_df['length'].to_numpy().flatten().std(), 2)),
+                 ComputedFeatures.PEAK_POSITION: str(np.round(features_df['peak_position'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
+                     np.round(features_df['peak_position'].to_numpy().flatten().std(), 2))}]
 
     return features
 
@@ -194,7 +199,7 @@ def get_features_table(emg: np.array, start_sample: int, stop_sample: int):
     return []
 
 
-def get_breaths(emg: np.array, start_sample: int, stop_sample: int, method: str) -> List[Breath]:
+def get_breaths(n_channel: int, start_sample: int, stop_sample: int, method: str) -> List[Breath]:
     """
     Produces a list of breaths from the time window in the signal.
         Args:
@@ -204,71 +209,94 @@ def get_breaths(emg: np.array, start_sample: int, stop_sample: int, method: str)
             method: the method used to compute the breaths
 
     """
-    big_list = np.round_(emg[start_sample:stop_sample], decimals=5)
-    slice_length = 100
+    emg_timeseries = variables.get_emg_timeseries()
+    print(n_channel)
+    emg = emg_timeseries[n_channel].y_env
+    
+    # TODO: Introduce different methods for breath detection
+    emg_timeseries[n_channel].baseline()
+    emg_timeseries[n_channel].detect_emg_breaths()
+    emg_timeseries[n_channel].peaks['breaths'].detect_on_offset(
+        baseline=emg_timeseries[n_channel].y_baseline
+    )
+    baseline = emg_timeseries[n_channel].y_baseline
+    emg_timeseries[n_channel].calculate_time_products(
+        peak_set_name='breaths') 
+    emg_timeseries[n_channel].test_emg_quality(peak_set_name='breaths')
+    emg_timeseries[n_channel].peaks['breaths'].sanitize()
+    peak_df = emg_timeseries[n_channel].peaks['breaths'].peak_df
 
-    if method == BreathSelectionMethod.LOG_REMAPPING.value:
-        index_hold = []
-        for slice in slice_iterator(big_list, slice_length):
-            entropy_index = hf.entropical(slice)
-            index_hold.append(entropy_index)
+    breaths = [Breath(start_sample=int(row['start_idx']),
+                      stop_sample=int(row['end_idx']-row['start_idx']),
+                      peak_sample=int(row['peak_idx']-row['start_idx']),
+                      amplitude=emg[int(row['start_idx']):int(row['end_idx'])],
+                      baseline=baseline[
+                          int(row['start_idx']):int(row['end_idx'])])
+               for _, row in peak_df.iterrows()]
+    
 
-        high_decision_cutoff = 0.9 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-        decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
+    # if method == BreathSelectionMethod.LOG_REMAPPING.value:
+    #     index_hold = []
+    #     for slice in slice_iterator(big_list, slice_length):
+    #         entropy_index = hf.entropical(slice)
+    #         index_hold.append(entropy_index)
 
-        rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
+    #     high_decision_cutoff = 0.9 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
+    #     decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
 
-    elif method == BreathSelectionMethod.VARIABILITY.value:
-        variability = hf.variability_maker(big_list, segment_size=slice_length, method='variance', fill_method='avg')
-        high_decision_cutoff = 0.5 * ((np.max(variability)) - (np.min(variability))) + np.min(variability)
-        decision_cutoff = 0.05 * ((np.max(variability)) - (np.min(variability))) + np.min(variability)
+    #     rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
+
+    # elif method == BreathSelectionMethod.VARIABILITY.value:
+    #     variability = hf.variability_maker(big_list, segment_size=slice_length, method='variance', fill_method='avg')
+    #     high_decision_cutoff = 0.5 * ((np.max(variability)) - (np.min(variability))) + np.min(variability)
+    #     decision_cutoff = 0.05 * ((np.max(variability)) - (np.min(variability))) + np.min(variability)
         
-        rms_rolled = hf.vect_naive_rolling_rms(variability, 100)  # so rms is rms variability
+    #     rms_rolled = hf.vect_naive_rolling_rms(variability, 100)  # so rms is rms variability
 
-    elif method == BreathSelectionMethod.SHANNON_ENTROPY.value:
-        index_hold = []
-        for slice in slice_iterator(big_list, slice_length):
-            entropy_index = hf.entropy_maker(slice, method='scipy')
-            index_hold.append(entropy_index)
+    # elif method == BreathSelectionMethod.SHANNON_ENTROPY.value:
+    #     index_hold = []
+    #     for slice in slice_iterator(big_list, slice_length):
+    #         entropy_index = hf.entropy_maker(slice, method='scipy')
+    #         index_hold.append(entropy_index)
 
-        high_decision_cutoff = 0.9 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-        decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
+    #     high_decision_cutoff = 0.9 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
+    #     decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
 
-        rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
+    #     rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
 
-    elif method == BreathSelectionMethod.SAMPLE_ENTROPY.value:
+    # elif method == BreathSelectionMethod.SAMPLE_ENTROPY.value:
 
-        # N.B. the window length is an empirical tradeoff between speed and quality of the results.
-        # It is not what is recommended in the literature
-        slice_length = 300
-        tolerance = 0.3 * np.std(big_list)
-        index_hold = []
-        for slice in slice_iterator(big_list, slice_length):
-            entropy_index = hf.sampen_optimized(slice, tolerance=tolerance)
-            index_hold.append(entropy_index)
+    #     # N.B. the window length is an empirical tradeoff between speed and quality of the results.
+    #     # It is not what is recommended in the literature
+    #     slice_length = 300
+    #     tolerance = 0.3 * np.std(big_list)
+    #     index_hold = []
+    #     for slice in slice_iterator(big_list, slice_length):
+    #         entropy_index = hf.sampen_optimized(slice, tolerance=tolerance)
+    #         index_hold.append(entropy_index)
 
-        # N.B. the cutoffs have still to be evaluated!
-        high_decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-        decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
+    #     # N.B. the cutoffs have still to be evaluated!
+    #     high_decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
+    #     decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
 
-        rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
+    #     rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
 
-    hi = np.array(hf.zero_one_for_jumps_base(rms_rolled, high_decision_cutoff))
-    lo = np.array(hf.zero_one_for_jumps_base(rms_rolled, decision_cutoff))
+    # hi = np.array(hf.zero_one_for_jumps_base(rms_rolled, high_decision_cutoff))
+    # lo = np.array(hf.zero_one_for_jumps_base(rms_rolled, decision_cutoff))
 
-    rhi = hf.ranges_of(hi)
-    rlo = hf.ranges_of(lo)
+    # rhi = hf.ranges_of(hi)
+    # rlo = hf.ranges_of(lo)
 
-    keep = hf.intersections(rlo, rhi)
+    # keep = hf.intersections(rlo, rhi)
 
-    seven_line = np.zeros(len(rms_rolled))
-    for seven_range in keep:
-        seven_line[seven_range.to_slice()] = 7
+    # seven_line = np.zeros(len(rms_rolled))
+    # for seven_range in keep:
+    #     seven_line[seven_range.to_slice()] = 7
 
-    breaths = [Breath(start_sample=int(keep[i].start+start_sample),
-                    stop_sample=int(keep[i + 1].start+start_sample),
-                    amplitude=emg[int(keep[i].start+start_sample):int(keep[i + 1].start+start_sample)])
-            for i, element in enumerate(keep[:-1])]
+    # breaths = [Breath(start_sample=int(keep[i].start+start_sample),
+    #                 stop_sample=int(keep[i + 1].start+start_sample),
+    #                 amplitude=emg[int(keep[i].start+start_sample):int(keep[i + 1].start+start_sample)])
+    #         for i, element in enumerate(keep[:-1])]
 
     return breaths
 
@@ -294,7 +322,8 @@ def get_breaths_maxima(breaths: List[Breath]) -> List[int]:
             breaths: list of the breaths
 
     """
-    maxima = [hf.find_peak_in_breath(abs(breath.amplitude), 0, len(breath.amplitude))[1]
+    maxima = [feat.amplitude(
+                breath.amplitude, [breath.peak_sample], breath.baseline)
               for breath in breaths]
 
     return maxima
@@ -308,13 +337,12 @@ def get_breaths_auc(breaths: List[Breath]) -> List[float]:
             breaths: list of the breaths
 
     """
-
-    auc = [hf.area_under_curve(
-        abs(breath.amplitude),
-        0,
-        (len(breath.amplitude) - 1),
-        end_curve=70,
-        smooth_algorithm='mid_savgol'
+    sampling_rate = variables.get_emg_freq()
+    auc = [feat.time_product(
+        breath.amplitude,
+        fs=sampling_rate,
+        start_idxs=[0],
+        end_idxs=[len(breath.amplitude) - 1],
     )
         for breath in breaths]
 
@@ -331,10 +359,10 @@ def get_breaths_rise_time(breaths: List[Breath], sampling_frequency: int) -> Lis
     """
     samples_to_milliseconds = sampling_frequency/1000
     rise_times = [
-        hf.times_under_curve(
+        feat.time_to_peak(
             breath.amplitude,
-            0,
-            (len(breath.amplitude) - 1))[0]/samples_to_milliseconds
+            [0],
+            [(len(breath.amplitude) - 1)])[0]/samples_to_milliseconds
         for breath in breaths
 
     ]
@@ -350,10 +378,10 @@ def get_breaths_peak_position(breaths: List[Breath]) -> List[float]:
             breaths: list of the breaths
     """
     rise_times = [
-        hf.times_under_curve(
+        feat.time_to_peak(
             breath.amplitude,
-            0,
-            (len(breath.amplitude) - 1))[1]*100
+            [0],
+            [(len(breath.amplitude) - 1)])[1]*100
         for breath in breaths
 
     ]
