@@ -14,7 +14,6 @@ import utils
 from app import variables
 from dash import Input, Output, State, callback, MATCH, ALL, html, ctx, dcc
 from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, FILE_IDENTIFIER, GatingMethod
-from resurfemg import helper_functions as hf
 
 card_counter = 0
 json_parameters = []
@@ -85,6 +84,7 @@ def show_data(click,
     json_parameters.append({'file_identifier': FILE_IDENTIFIER})
 
     emg_data = variables.get_emg()
+    emg_timeseries = variables.get_emg_timeseries()
     sample_rate = variables.get_emg_freq()
 
     # we have to make sure that the cut-off frequencies are in an acceptable range
@@ -93,118 +93,138 @@ def show_data(click,
     # if data have been loaded, apply the processing
     if emg_data is not None:
         # apply cut
-        emg_cut = hf.bad_end_cutter_for_samples(emg_data, cut_percent, cut_tolerance)
-        json_parameters.append(utils.build_cutter_params_json(1, cut_percent, cut_tolerance))
+        # emg_cut = hf.bad_end_cutter_for_samples(emg_data, cut_percent, cut_tolerance)
+        # json_parameters.append(utils.build_cutter_params_json(1, cut_percent, cut_tolerance))
 
         # apply filter
-        emg_data_filtered = hf.emg_bandpass_butter_sample(emg_cut,
-                                                          low_freq,
-                                                          high_freq,
-                                                          sample_rate)
-        json_parameters.append(utils.build_bandpass_params_json(2, low_freq, high_freq))
-
-        # remove filtering artifacts (this is done automatically, no params are
-        # displayed in the GUI
-        emg_cut_final = hf.bad_end_cutter_for_samples(emg_data_filtered, 3, 5)
-        json_parameters.append(utils.build_cutter_params_json(3, 3, 5))
+        # emg_timeseries.run('filter_emg', hp_cf=low_freq, lp_cf=high_freq)
+        emg_timeseries.run('filter_emg')
+        emg_data_filtered = np.array([ts.y_filt for ts in emg_timeseries])
+        # emg_data_filtered = hf.emg_bandpass_butter_sample(emg_cut,
+        #                                                   low_freq,
+        #                                                   high_freq,
+        #                                                   sample_rate)
+        json_parameters.append(utils.build_bandpass_params_json(
+            2, low_freq, high_freq))
 
         # remove ECG
-        if ecg_method == EcgRemovalMethods.GATING.value:
-            gating_method_default_idx = utils.get_idx_dict_list(gating_method_idx, 'index', '0')
-            gating_method_default = int(gating_method[gating_method_default_idx])
-            json_parameters.append(utils.build_ecgfilt_params_json(4,
-                                                                   EcgRemovalMethods(ecg_method),
-                                                                   GatingMethod(
-                                                                       gating_method[gating_method_default_idx])))
-        else:
-            gating_method_default = None
-            json_parameters.append(utils.build_ecgfilt_params_json(4, EcgRemovalMethods(ecg_method)))
+        # TODO: add the ECG removal gating method to the json file
+        # if ecg_method == EcgRemovalMethods.GATING.value:
+        #     gating_method_default_idx = utils.get_idx_dict_list(gating_method_idx, 'index', '0')
+        #     gating_method_default = int(gating_method[gating_method_default_idx])
+        #     json_parameters.append(utils.build_ecgfilt_params_json(
+        #         4, EcgRemovalMethods(ecg_method),
+        #         GatingMethod(gating_method[gating_method_default_idx]))
+        #     )
+        # else:
+        #     gating_method_default = None
+        #     json_parameters.append(utils.build_ecgfilt_params_json(
+        #         4, EcgRemovalMethods(ecg_method)))
 
-        emg_ecg, titles = utils.apply_ecg_removal(ecg_method, emg_cut_final, sample_rate, gating_method_default)
+        # emg_ecg, titles = utils.apply_ecg_removal(
+        #   ecg_method, emg_cut_final, sample_rate, gating_method_default)
+        emg_timeseries.run('gating', overwrite=True)
 
-        new_step_emg = emg_ecg
+        # TODO: Implement extra processing steps
+        titles = emg_timeseries.labels
+        # new_step_emg = np.array([ts.y_clean for ts in emg_timeseries])
+        # # get the custom steps added, and apply the selected processing
+        # for n, card in enumerate(additional_card):
+        #     card_id = card['index']
+        #     step = additional_steps[n]
+        #     if step == ProcessTypology.BAND_PASS.value:
+        #         idx_low = utils.get_idx_dict_list(
+        #             additional_low_idx, 'index', card_id)
+        #         idx_high = utils.get_idx_dict_list(
+        #             additional_high_idx, 'index', card_id)
 
-        # get the custom steps added, and apply the selected processing
-        for n, card in enumerate(additional_card):
-            card_id = card['index']
-            step = additional_steps[n]
-            if step == ProcessTypology.BAND_PASS.value:
-                idx_low = utils.get_idx_dict_list(additional_low_idx, 'index', card_id)
-                idx_high = utils.get_idx_dict_list(additional_high_idx, 'index', card_id)
+        #         low_cut = additional_low[idx_low]
+        #         high_cut_input = additional_high[idx_high]
+        #         high_cut = utils.check_default_cut_frequency(
+        #             high_cut_input, sample_rate)
 
-                low_cut = additional_low[idx_low]
-                high_cut_input = additional_high[idx_high]
-                high_cut = utils.check_default_cut_frequency(high_cut_input, sample_rate)
+        #         new_step_emg = filt.emg_bandpass_butter(
+        #             new_step_emg, high_pass=low_cut, low_pass=high_cut,
+        #             fs_emg=sample_rate)
+        #         json_parameters.append(utils.build_bandpass_params_json(
+        #             len(json_parameters) + 1, low_cut, high_cut))
 
-                new_step_emg = hf.emg_bandpass_butter_sample(new_step_emg,
-                                                             low_cut, high_cut,
-                                                             sample_rate)
-                json_parameters.append(utils.build_bandpass_params_json(len(json_parameters) + 1,
-                                                                        low_cut,
-                                                                        high_cut))
+        #     elif step == ProcessTypology.HIGH_PASS.value:
+        #         idx = utils.get_idx_dict_list(
+        #             additional_low_idx, 'index', card_id)
+        #         low_cut = additional_low[idx]
 
-            elif step == ProcessTypology.HIGH_PASS.value:
-                idx = utils.get_idx_dict_list(additional_low_idx, 'index', card_id)
-                low_cut = additional_low[idx]
+        #         new_step_emg = filt.emg_highpass_butter(
+        #             new_step_emg, high_pass=low_cut, fs_emg=sample_rate)
+        #         json_parameters.append(utils.build_highpass_params_json(
+        #             len(json_parameters) + 1, low_cut))
 
-                new_step_emg = hf.emg_highpass_butter(new_step_emg,
-                                                      low_cut,
-                                                      sample_rate)
-                json_parameters.append(utils.build_highpass_params_json(len(json_parameters) + 1,
-                                                                        low_cut))
+        #     elif step == ProcessTypology.LOW_PASS.value:
+        #         idx = utils.get_idx_dict_list(
+        #             additional_high_idx, 'index', card_id)
 
-            elif step == ProcessTypology.LOW_PASS.value:
-                idx = utils.get_idx_dict_list(additional_high_idx, 'index', card_id)
+        #         high_cut_input = additional_high[idx]
+        #         high_cut = utils.check_default_cut_frequency(
+        #             high_cut_input, sample_rate)
 
-                high_cut_input = additional_high[idx]
-                high_cut = utils.check_default_cut_frequency(high_cut_input, sample_rate)
+        #         # TODO: add function when it will be available in helper_functions
+        #         new_step_emg = filt.emg_lowpass_butter(
+        #             new_step_emg, low_cut, sample_rate)
+        #         json_parameters.append(utils.build_lowpass_params_json(
+        #             n + 5, high_cut))
 
-                # TODO: add function when it will be available in helper_functions
-                # new_step_emg = hf.emg_lowpass_butter(new_step_emg, low_cut, sample_rate)
-                # json_parameters.append(utils.build_lowpass_params_json(n + 5, high_cut))
+        #     elif step == ProcessTypology.ECG_REMOVAL.value:
+        #         idx = utils.get_idx_dict_list(
+        #             additional_rem_idx, 'index', card_id) - 1
 
-            elif step == ProcessTypology.ECG_REMOVAL.value:
-                idx = utils.get_idx_dict_list(additional_rem_idx, 'index', card_id) - 1
+        #         ecg_additional_method = additional_rem[idx]
+        #         if ecg_additional_method == EcgRemovalMethods.GATING.value:
+        #             gating_method_type = int(gating_method[idx])
+        #             json_parameters.append(utils.build_ecgfilt_params_json(
+        #                 len(json_parameters) + 1,
+        #                 EcgRemovalMethods(ecg_additional_method),
+        #                 GatingMethod(gating_method[idx])
+        #             ))
+        #         else:
+        #             gating_method_type = None
+        #             json_parameters.append(utils.build_ecgfilt_params_json(
+        #                 len(json_parameters) + 1,
+        #                 EcgRemovalMethods(ecg_additional_method)
+        #             ))
 
-                ecg_additional_method = additional_rem[idx]
-                if ecg_additional_method == EcgRemovalMethods.GATING.value:
-                    gating_method_type = int(gating_method[idx])
-                    json_parameters.append(utils.build_ecgfilt_params_json(len(json_parameters) + 1,
-                                                                           EcgRemovalMethods(ecg_additional_method),
-                                                                           GatingMethod(gating_method[idx])
-                                                                           ))
-                else:
-                    gating_method_type = None
-                    json_parameters.append(utils.build_ecgfilt_params_json(len(json_parameters) + 1,
-                                                                           EcgRemovalMethods(ecg_additional_method)
-                                                                           ))
+        #         # at the moment we need to create a matrix with 3 leads to use the methods
+        #         # the lead 0 is the  ecg lead, the other two are the same processed signal
+        #         # if the matrix is still bi-dimensional, we use it
 
-                # at the moment we need to create a matrix with 3 leads to use the methods
-                # the lead 0 is the  ecg lead, the other two are the same processed signal
-                # if the matrix is still bi-dimensional, we use it
+        #         if new_step_emg.ndim == 1:
+        #             tmp_matrix = np.array([emg_cut_final[0, :],
+        #                                    new_step_emg,
+        #                                    new_step_emg])
+        #         else:
+        #             tmp_matrix = new_step_emg
 
-                if new_step_emg.ndim == 1:
-                    tmp_matrix = np.array([emg_cut_final[0, :], new_step_emg, new_step_emg])
-                else:
-                    tmp_matrix = new_step_emg
-
-                new_step_emg, titles = utils.apply_ecg_removal(ecg_additional_method,
-                                                               tmp_matrix,
-                                                               sample_rate,
-                                                               gating_method_type)
+        #         new_step_emg, titles = utils.apply_ecg_removal(
+        #             ecg_additional_method,
+        #             tmp_matrix,
+        #             sample_rate,
+        #             gating_method_type)
 
         # At the end, extract the envelope
-        emg_env = utils.get_envelope(envelope_method, new_step_emg, sample_rate)
-        json_parameters.append(utils.build_envelope_params_json(len(json_parameters) + 1,
-                                                                EnvelopeMethod(envelope_method)
-                                                                ))
+        emg_timeseries.run('envelope')
+        
+        emg_env = np.array([ts.y_env for ts in emg_timeseries])
+        json_parameters.append(utils.build_envelope_params_json(
+            len(json_parameters) + 1, EnvelopeMethod(envelope_method)))
 
         # store the processed signal
         variables.set_emg_processed(emg_env)
-        # if the processing is the default one, store it
-        if ctx.triggered_id != 'apply-pipeline-btn':
-            preprocessed_def = np.insert(emg_env, 0, emg_cut_final[0], 0)
-            variables.set_emg_processed_default(preprocessed_def)
+        variables.set_emg_timeseries(emg_timeseries)
+        # # if the processing is the default one, store it (TODO: FIX
+        preprocessed_def = np.array([ts.y_clean for ts in emg_timeseries])
+        variables.set_emg_processed_default(preprocessed_def)
+        # if ctx.triggered_id != 'apply-pipeline-btn':
+        #     preprocessed_def = np.insert(emg_env, 0, emg_cut_final[0], 0)
+        #     variables.set_emg_processed_default(preprocessed_def)
         # update the graphs
 
         leads_displayed = emg_env.shape[0]
@@ -213,10 +233,8 @@ def show_data(click,
             # in case the dimension is different, the ecg lead is not included
             preprocessed_def = preprocessed_def[1:leads_displayed + 1, :]
 
-        children_emg = utils.add_emg_graphs(emg_env,
-                                            sample_rate,
-                                            titles,
-                                            preprocessed_def)
+        children_emg = utils.add_emg_graphs(
+            emg_env, sample_rate, titles, preprocessed_def)
         # enable the data download
         save_data_enabled = False
     else:  # if no data have been uploaded

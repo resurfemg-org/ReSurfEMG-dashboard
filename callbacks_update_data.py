@@ -12,13 +12,16 @@ import os
 from dash import Input, Output, callback, ctx, State, html, ALL, callback_context
 from app import app, variables
 from resurfemg.data_connector import converter_functions as cv
+from resurfemg.data_connector.data_classes import (
+    EmgDataGroup, VentilatorDataGroup)
 from pathlib import Path
 from dash.exceptions import PreventUpdate
-from definitions import (PATH_BTN, FILE_PATH_INPUT, STORED_CWD, CWD,
-                         CWD_FILES, CONFIRM_CENTERED, MODAL_CENTERED,
-                         EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
-                         LISTED_FILES, VENT_FREQUENCY_DIV, VENT_SAMPLING_FREQUENCY, EMG_FREQUENCY_DIV,
-                         EMG_SAMPLING_FREQUENCY, VENT_FILE_UPDATED, EMG_FILE_UPDATED)
+from definitions import (
+    PATH_BTN, FILE_PATH_INPUT, STORED_CWD, CWD, CWD_FILES, CONFIRM_CENTERED,
+    MODAL_CENTERED, EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
+    LISTED_FILES, VENT_FREQUENCY_DIV, VENT_SAMPLING_FREQUENCY,
+    EMG_FREQUENCY_DIV, EMG_SAMPLING_FREQUENCY, VENT_FILE_UPDATED,
+    EMG_FILE_UPDATED)
 
 # variable to keep track of which upload button has been clicked
 clicked_input_btn = None
@@ -55,16 +58,30 @@ def toggle_modal(n1, n2, n3, is_open, selected_file, current_msg_emg, current_ms
         clicked_input_btn = ctx.triggered_id
 
     if ctx.triggered_id == CONFIRM_CENTERED:
-        data = read_file(selected_file)
-
+        data, metadata = read_file(selected_file)
+        
         if data is not None:
             if clicked_input_btn == EMG_OPEN_CENTERED:
                 variables.set_emg(data)
                 variables.set_emg_filename('File: ' + selected_file)
+                emg_timeseries = EmgDataGroup(
+                    y_raw=data,
+                    fs=metadata['fs'] if 'fs' in metadata else None,
+                    labels=metadata['labels'] if 'labels' in metadata else None,
+                    units=metadata['units'] if 'units' in metadata else None,
+                )
+                variables.set_emg_timeseries(emg_timeseries)
                 message_emg = 'File correctly uploaded: ' + selected_file
             elif clicked_input_btn == VENT_OPEN_CENTERED:
                 variables.set_ventilator(data)
                 variables.set_ventilator_filename('File: ' + selected_file)
+                vent_timeseries = VentilatorDataGroup(
+                    y_raw=data,
+                    fs=metadata['fs'] if 'fs' in metadata else None,
+                    labels=metadata['labels'] if 'labels' in metadata else None,
+                    units=metadata['units'] if 'units' in metadata else None,
+                )
+                variables.set_vent_timeseries(vent_timeseries)
                 message_vent = 'File correctly uploaded: ' + selected_file
         else:
             if clicked_input_btn == EMG_OPEN_CENTERED:
@@ -148,10 +165,11 @@ def read_file(file_path: str) -> np.ndarray:
     """
     try:
         try:
-            data, *_ = cv.load_file(file_path, verbose=False)
+            data, _, metadata = cv.load_file(file_path, verbose=False)
         except Exception as e:
             raise Exception(f"Error loading file: {e}")
     except:
         data = None
+        metadata = None
 
-    return data
+    return data, metadata
