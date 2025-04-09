@@ -22,8 +22,10 @@ class Variables:
         self.ventilator_filename = None
         self.emg = None
         self.emg_freq = None
+        self.emg_timeseries = None
         self.ventilator = None
         self.ventilator_freq = None
+        self.vent_timeseries = None
         self.emg_processed = None
         self.emg_processed_default = None
 
@@ -45,11 +47,23 @@ class Variables:
     def get_emg(self):
         return self.emg
 
+    def set_emg_timeseries(self, emg_timeseries):
+        self.emg_timeseries = emg_timeseries
+
+    def get_emg_timeseries(self):
+        return self.emg_timeseries
+
     def set_ventilator(self, ventilator):
         self.ventilator = ventilator
 
     def get_ventilator(self):
         return self.ventilator
+
+    def set_vent_timeseries(self, vent_timeseries):
+        self.vent_timeseries = vent_timeseries
+
+    def get_vent_timeseries(self):
+        return self.emg_timeseries
 
     def set_emg_freq(self, emg_freq):
         self.emg_freq = emg_freq
