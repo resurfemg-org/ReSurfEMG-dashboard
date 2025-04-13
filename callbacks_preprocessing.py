@@ -29,9 +29,18 @@ def show_raw_data(data):
     emg_data = variables.get_emg()
     emg_frequency = variables.get_emg_freq()
     filename = variables.get_emg_filename()
+    emg_timeseries = variables.get_emg_timeseries()
+    if emg_timeseries is not None:
+        titles = [ts.label for ts in emg_timeseries]
+        units = [ts.y_units for ts in emg_timeseries]
+    else:   
+        titles = None
+        units = None
+    # if the data have been loaded, show the graphs
 
     if emg_data is not None:
-        children_emg = utils.add_emg_graphs(np.array(emg_data), emg_frequency)
+        children_emg = utils.add_emg_graphs(
+            np.array(emg_data), emg_frequency, titles=titles, units=units)
     else:
         children_emg = []
 
@@ -126,7 +135,8 @@ def show_data(click,
         emg_timeseries.run('gating', overwrite=True)
 
         # TODO: Implement extra processing steps
-        titles = emg_timeseries.labels
+        titles = [ts.label for ts in emg_timeseries]
+        units = [ts.y_units for ts in emg_timeseries]
         # new_step_emg = np.array([ts.y_clean for ts in emg_timeseries])
         # # get the custom steps added, and apply the selected processing
         # for n, card in enumerate(additional_card):
@@ -234,7 +244,7 @@ def show_data(click,
             preprocessed_def = preprocessed_def[1:leads_displayed + 1, :]
 
         children_emg = utils.add_emg_graphs(
-            emg_env, sample_rate, titles, preprocessed_def)
+            emg_env, sample_rate, titles, preprocessed_def, units=units)
         # enable the data download
         save_data_enabled = False
     else:  # if no data have been uploaded
