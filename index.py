@@ -38,21 +38,21 @@ navbardefault = {
 }
 
 header = dbc.Row([
-    dbc.Col(html.Div([
-        html.H1(children='ReSurfEMG Dashboard',
-                style={'textAlign': 'center'}
-                )]
-    ),
-        width=8
-    ),
     dbc.Col(html.Img(
         src=f'data:image/png;base64,{encoded_image.decode()}',
-        height='100 px',
+        height='60 px',
         width='auto'),
-        width=4)
+        width=1),
+    dbc.Col(html.Div([
+        html.H1(children='ReSurfEMG Dashboard',
+                style={'textAlign': 'left', }
+                )]
+    ),
+        width=11
+    ),
 ],
     align='center',
-    style={'height': '150px',
+    style={'height': '80px',
            'background-color': colors['superdark-green'],
            'color': colors['white']}
 
@@ -85,4 +85,4 @@ app.layout = dbc.Container([
 )
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
