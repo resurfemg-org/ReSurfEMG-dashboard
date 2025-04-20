@@ -86,11 +86,10 @@ def update_figure(relayoutdata_list: dict, graph_id_dict_list: dict):
     src_idx = graph_id_list.index(triggered_index)
     relayoutdata_src = relayoutdata_list[src_idx]
     fig_list = []
-    rel_out_list = []
     for idx, key in enumerate(graph_id_list):
         relayoutdata = relayoutdata_list[idx]
         fig = utils.get_graph_fig(dict_key=key)
-        if relayoutdata is not None:
+        if relayoutdata and relayoutdata_src:
             if 'xaxis.range[0]' in relayoutdata_src:
                 x_range_new = [relayoutdata_src['xaxis.range[0]'],
                                relayoutdata_src['xaxis.range[1]']]
@@ -105,8 +104,5 @@ def update_figure(relayoutdata_list: dict, graph_id_dict_list: dict):
                 relayoutdata['dragmode'] = relayoutdata_src['dragmode']
                 fig.update_layout(dragmode=relayoutdata_src['dragmode'])
         fig_list.append(fig.construct_update_data_patch(relayoutdata))
-        if relayoutdata is not None and idx != src_idx:
-            relayoutdata['xaxis.autorange'] = True
-        rel_out_list.append(relayoutdata)
 
     return fig_list
