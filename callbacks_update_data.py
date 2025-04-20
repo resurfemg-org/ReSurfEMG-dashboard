@@ -21,11 +21,23 @@ from definitions import (
     MODAL_CENTERED, EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
     LISTED_FILES, VENT_FREQUENCY_DIV, VENT_SAMPLING_FREQUENCY,
     EMG_FREQUENCY_DIV, EMG_SAMPLING_FREQUENCY, VENT_FILE_UPDATED,
-    EMG_FILE_UPDATED)
+    EMG_FILE_UPDATED, PATH_ERROR)
 
 # variable to keep track of which upload button has been clicked
 clicked_input_btn = None
 
+def convert_to_os_path(
+    path: str,
+):
+    """
+    This function converts a path to a os readable path.
+    -----------------------------------------------------------------------
+    :param path: The path to convert.
+    :type path: str
+    """
+    readable_path = path.replace(
+        os.sep if os.altsep is None else os.altsep, os.sep)
+    return readable_path
 
 @callback(Output(EMG_FREQUENCY_DIV, 'data'),
           Input(EMG_SAMPLING_FREQUENCY, 'value'))
@@ -93,53 +105,71 @@ def toggle_modal(n1, n2, n3, is_open, selected_file, current_msg_emg, current_ms
 
 
 @app.callback(
-    Output(CWD, 'children'),
-    State(FILE_PATH_INPUT, 'value'),
+    Output(CWD, 'value'),
+    Output(PATH_ERROR, 'children'),
+    Output(CWD_FILES, 'children'),
     Input(STORED_CWD, 'data'),
     Input(PARENT_DIR, 'n_clicks'),
-    Input(CWD, 'children'),
+    State(CWD, 'value'),
     Input(PATH_BTN, 'n_clicks'),
-    prevent_initial_call=True)
-def get_parent_directory_emg(path_input, stored_cwd, n_clicks, currentdir, path_btn):
+)
+def get_parent_directory_emg(stored_cwd, n_clicks, cwd, path_btn):
     triggered_id = callback_context.triggered_id
     path = None
 
     if triggered_id == STORED_CWD:
         path = stored_cwd
     elif triggered_id == PATH_BTN:
-        path = Path(path_input).parent.as_posix()
+        path = convert_to_os_path(Path(cwd).as_posix())
     elif triggered_id == PARENT_DIR:
-        path = Path(currentdir).parent.as_posix()
+        path = convert_to_os_path(Path(cwd).parent.as_posix())
 
-    return path if os.path.exists(path) or os.path.isfile(path) else 'Path not valid'
+    if path is None:
+        path = os.getcwd()
 
-
-@app.callback(
-    Output(CWD_FILES, 'children'),
-    Input(CWD, 'children'))
-def list_cwd_files(cwd):
-    path = Path(cwd)
-
+    if os.path.exists(path) or os.path.isfile(path):
+        path_error = ''
+    else:
+        path_error = 'Path not valid'
+    
     cwd_files = []
-    if path.is_dir():
-        files = sorted(os.listdir(path), key=str.lower)
+    if path and Path(path).is_dir():
+        work_path = Path(path)
+        sel_path = None
+    elif path and Path(path).is_file():
+        work_path = Path(path).parent
+        sel_path = path
+    else:
+        work_path = None
+        sel_path = None
+
+    if work_path:
+        files = sorted(os.listdir(work_path), key=str.lower)
         for i, file in enumerate(files):
             filepath = Path(file)
-            full_path = os.path.join(cwd, filepath.as_posix())
+            full_path = os.path.join(work_path, filepath.as_posix())
 
             is_dir = Path(full_path).is_dir()
+            is_sel_file = sel_path == convert_to_os_path(full_path)
+            if is_dir:
+                style = {'fontWeight': 'bold'}
+            elif is_sel_file:
+                style = {'backgroundColor': 'yellow'} 
+            else:
+                style = {}
+            
             link = html.A([
                 html.Span(
                     file, id={'type': LISTED_FILES, 'index': i},
                     title=full_path,
-                    style={'fontWeight': 'bold'} if is_dir else {}
+                    style=style,
                 )], href='#')
-            prepend = '' if not is_dir else '📂'
+            prepend = '🗒️' if not is_dir else '📂'
             cwd_files.append(prepend)
             cwd_files.append(link)
             cwd_files.append(html.Br())
 
-    return cwd_files
+    return path, path_error, cwd_files
 
 
 @app.callback(
