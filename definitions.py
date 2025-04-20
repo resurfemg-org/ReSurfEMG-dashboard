@@ -93,6 +93,7 @@ VENT_FILE_UPDATED = 'ventilator-file-updated'
 VENT_FREQUENCY_DIV = 'ventilator-frequency-div'
 VENT_OPEN_CENTERED = 'open-centered-vent'
 VENT_SAMPLING_FREQUENCY = 'ventilator-sample-freq'
+PATH_ERROR = 'path-error'
 
 # FEATURES PAGE
 EMG_FILENAME_FEATURES = 'emg-filename-features'
