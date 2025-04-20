@@ -5,11 +5,10 @@ Licensed under the Apache License, version 2.0. See LICENSE for details.
 This file contains functions to work functions from the ReSurfEMG library.
 """
 
-from dash import Input, Output, callback, ctx, MATCH, State, ALL, callback_context
+from dash import Input, Output, callback, ctx, State, ALL, callback_context
 from app import app, variables
 import utils
 import numpy as np
-from dash.exceptions import PreventUpdate
 
 
 @callback(Output('emg-graphs-container', 'children'),
@@ -75,7 +74,7 @@ def show_raw_data(delete):
 
 
 @app.callback(
-    Output({"type": "dynamic-updater", "index": ALL}, "updateData"),
+    Output({"type": "dynamic-graph", "index": ALL}, "figure"),
     Input({"type": "dynamic-graph", "index": ALL}, "relayoutData"),
     State({"type": "dynamic-graph", "index": ALL}, "id"),
     prevent_initial_call=True,
@@ -86,32 +85,28 @@ def update_figure(relayoutdata_list: dict, graph_id_dict_list: dict):
     graph_id_list = [d["index"] for d in graph_id_dict_list]
     src_idx = graph_id_list.index(triggered_index)
     relayoutdata_src = relayoutdata_list[src_idx]
-    if relayoutdata_src is not None and 'xaxis.range[0]' in relayoutdata_src:
-        x_range_new = [relayoutdata_src['xaxis.range[0]'],
-                       relayoutdata_src['xaxis.range[1]']]
-
-    updateData_list = []
+    fig_list = []
+    rel_out_list = []
     for idx, key in enumerate(graph_id_list):
         relayoutdata = relayoutdata_list[idx]
-        graph_id_dict = graph_id_dict_list[idx]
+        fig = utils.get_graph_fig(dict_key=key)
         if relayoutdata is not None:
-            if (relayoutdata_src is not None
-                    and 'xaxis.range[0]' in relayoutdata_src):
+            if 'xaxis.range[0]' in relayoutdata_src:
+                x_range_new = [relayoutdata_src['xaxis.range[0]'],
+                               relayoutdata_src['xaxis.range[1]']]
                 relayoutdata.pop('xaxis.autorange', None)
-                relayoutdata.pop('xaxis.showspikes', None)
                 relayoutdata['xaxis.range[0]'] = x_range_new[0]
                 relayoutdata['xaxis.range[1]'] = x_range_new[1]
-                fig = utils.get_graph_fig(dict_key=key)
-                fig.update_xaxes(range=x_range_new, overwrite=True)
-                fig.update_xaxes(showgrid=False)
-            else:
+            elif 'xaxis.autorange' in relayoutdata_src:
                 relayoutdata['xaxis.autorange'] = True
-                relayoutdata['xaxis.showspikes'] = True
                 relayoutdata.pop('xaxis.range[0]', None)
                 relayoutdata.pop('xaxis.range[1]', None)
-                fig = utils.get_graph_fig(dict_key=key)
-                fig.update_xaxes(autorange=True, overwrite=True)
-        updateData = utils.get_dict(graph_id_dict, relayoutdata)
-        updateData_list.append(updateData)
+            if 'dragmode' in relayoutdata_src:
+                relayoutdata['dragmode'] = relayoutdata_src['dragmode']
+                fig.update_layout(dragmode=relayoutdata_src['dragmode'])
+        fig_list.append(fig.construct_update_data_patch(relayoutdata))
+        if relayoutdata is not None and idx != src_idx:
+            relayoutdata['xaxis.autorange'] = True
+        rel_out_list.append(relayoutdata)
 
-    return updateData_list
+    return fig_list
