@@ -18,8 +18,7 @@ layout = html.Div([
         dbc.Col([
             html.Div([
                 html.H1(id='emg-data-title', children='EMG data',
-                        style={'text-align': 'center'}
-),
+                        style={'text-align': 'center'}),
                 html.Div(id='emg-filename'),
                 dbc.Button('Remove data', id='emg-delete-button',
                            style={'background': 'red',
