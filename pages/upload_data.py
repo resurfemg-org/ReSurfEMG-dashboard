@@ -8,11 +8,13 @@ import os
 
 import dash
 import dash_bootstrap_components as dbc
-from definitions import (PATH_BTN, FILE_PATH_INPUT, STORED_CWD, CWD,
+from definitions import (PATH_BTN, FILE_PATH_INPUT, PATH_SELECT, CWD,
                          CWD_FILES, CONFIRM_CENTERED, MODAL_CENTERED,
                          EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
                          EMG_SAMPLING_FREQUENCY, VENT_SAMPLING_FREQUENCY,
-                         VENT_FREQUENCY_DIV, EMG_FREQUENCY_DIV, VENT_FILE_UPDATED, EMG_FILE_UPDATED)
+                         VENT_FREQUENCY_DIV, EMG_FREQUENCY_DIV,
+                         VENT_FILE_UPDATED, EMG_FILE_UPDATED, PATH_ERROR,
+                         DIR_FAVORITES)
 from dash import html, dcc
 
 dash.register_page(__name__, path='/')
@@ -21,26 +23,40 @@ modal_dialog = html.Div(
     [
         dbc.Modal(
             [
-                dbc.ModalHeader(dbc.ModalTitle("Close"), close_button=True),
+                dbc.ModalHeader(dbc.ModalTitle("Select file"), close_button=True),
                 dbc.ModalBody([
                     dbc.Row([
-                        html.H1('Select file'),
                         dbc.Col([
-                            dbc.Button('GO TO', id=PATH_BTN)
-                        ], width=2, className="d-grid gap-2"),
+                            dbc.Button('↑', id=PARENT_DIR)
+                        ], width=1, className="d-grid gap-2"),
                         dbc.Col([
-                            dcc.Input(id=FILE_PATH_INPUT, placeholder='Insert the path to the file')
-                        ], className="d-grid gap-2")
+                            dcc.Input(
+                                id=CWD,
+                                value=os.getcwd(),
+                                placeholder='Insert the path to the file')
+                        ], className="d-grid gap-2"),
+                        dbc.Col([
+                            dbc.Button('↵', id=PATH_BTN)
+                        ], width=1, className="d-grid gap-2"),
+                    ], class_name="py-2"),
+                    dbc.Row([
+                        html.P(id=PATH_ERROR, style={'color': 'red'}),
                     ]),
                     dbc.Row([
-                        html.P()
-                    ]),
-                    dbc.Row([
-                        dcc.Store(id=STORED_CWD, data=os.getcwd()),
-                        html.H5(html.B(html.A("⬆️ Parent directory", href='#', id=PARENT_DIR))),
-                        html.H3([html.Code(os.getcwd(), id=CWD)]),
-                        html.Br(), html.Br(),
-                        html.Div(id=CWD_FILES)
+                        dbc.Col([
+                            html.Div(
+                                id=DIR_FAVORITES,
+                                style={
+                                    'overflowY': 'scroll', 'height': '400px'})
+                        ], width=3, className="d-grid gap-2"),
+                        dbc.Col([
+                            html.Div(
+                                id=CWD_FILES,
+                                style={
+                                    'overflowY': 'scroll', 'height': '400px'})
+                        ], width=9, className="d-grid gap-2"),
+                        dcc.Store(id=PATH_SELECT, data=os.getcwd()),
+                        # html.H3([html.Code(os.getcwd(), id=CWD)]),
                     ])]),
                 dbc.ModalFooter(
                     dbc.Button(
@@ -55,7 +71,8 @@ modal_dialog = html.Div(
             centered=True,
             is_open=False,
             backdrop=False,
-            scrollable=True
+            scrollable=True,
+            size='lg',
         ),
     ]
 )

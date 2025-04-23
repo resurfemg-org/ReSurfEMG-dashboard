@@ -9,19 +9,23 @@ from typing import Any, Tuple
 
 import numpy as np
 import os
-from dash import Input, Output, callback, ctx, State, html, ALL, callback_context
+from dash import (Input, Output, callback, ctx, State, html, ALL,
+                  callback_context, no_update)
+                  
 from app import app, variables
+from resurfemg.data_connector import config
 from resurfemg.data_connector import converter_functions as cv
 from resurfemg.data_connector.data_classes import (
     EmgDataGroup, VentilatorDataGroup)
 from pathlib import Path
 from dash.exceptions import PreventUpdate
 from definitions import (
-    PATH_BTN, FILE_PATH_INPUT, STORED_CWD, CWD, CWD_FILES, CONFIRM_CENTERED,
+    PATH_BTN, FILE_PATH_INPUT, PATH_SELECT, CWD, CWD_FILES, CONFIRM_CENTERED,
     MODAL_CENTERED, EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
     LISTED_FILES, VENT_FREQUENCY_DIV, VENT_SAMPLING_FREQUENCY,
     EMG_FREQUENCY_DIV, EMG_SAMPLING_FREQUENCY, VENT_FILE_UPDATED,
-    EMG_FILE_UPDATED, PATH_ERROR)
+    EMG_FILE_UPDATED, PATH_ERROR, DIR_FAVORITES, EMG_SAMPLING_FREQUENCY,
+    INVALID_DIR)
 
 # variable to keep track of which upload button has been clicked
 clicked_input_btn = None
@@ -56,7 +60,7 @@ def update_ventilator_frequency(freq):
 @app.callback(
     [Output(MODAL_CENTERED, 'is_open'), Output(EMG_FILE_UPDATED, 'children'), Output(VENT_FILE_UPDATED, 'children')],
     [Input(EMG_OPEN_CENTERED, 'n_clicks'), Input(VENT_OPEN_CENTERED, 'n_clicks'), Input(CONFIRM_CENTERED, 'n_clicks')],
-    [State(MODAL_CENTERED, 'is_open'), State(STORED_CWD, 'data'),
+    [State(MODAL_CENTERED, 'is_open'), State(PATH_SELECT, 'data'),
      State(EMG_FILE_UPDATED, 'children'), State(VENT_FILE_UPDATED, 'children')],
     prevent_initial_call=True
 )
@@ -108,17 +112,63 @@ def toggle_modal(n1, n2, n3, is_open, selected_file, current_msg_emg, current_ms
     Output(CWD, 'value'),
     Output(PATH_ERROR, 'children'),
     Output(CWD_FILES, 'children'),
-    Input(STORED_CWD, 'data'),
+    Output(DIR_FAVORITES, 'children'),
+    Input(PATH_SELECT, 'data'),
     Input(PARENT_DIR, 'n_clicks'),
     State(CWD, 'value'),
     Input(PATH_BTN, 'n_clicks'),
+
 )
-def get_parent_directory_emg(stored_cwd, n_clicks, cwd, path_btn):
+def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
     triggered_id = callback_context.triggered_id
     path = None
+    if triggered_id is None:
+        dir_inputs = [
+            ('Home', os.getcwd(), '🏠'), 
+            ('User', os.path.expanduser('~'), '👤'),
+            ('Computer', os.path.abspath(os.sep), '💻'),
+        ]
+        config = config.Config(verbose=False)
 
-    if triggered_id == STORED_CWD:
-        path = stored_cwd
+
+        dir_list = []
+        for i, (_dir_name, _dir_path, icon) in enumerate(dir_inputs):
+            style={
+                'fontweight': 'bold',
+                'color': 'black',
+                'whiteSpace': 'nowrap',
+                'overflow': 'hidden',
+                'textOverflow': 'ellipsis',
+                'display': 'inline-flex',
+                'alignItems': 'center',
+                'maxWidth': '150px'}
+            
+            if os.path.exists(_dir_path):
+                link = html.A([html.Span(
+                    _dir_name, id={'type': DIR_FAVORITES, 'index': i},
+                    title=convert_to_os_path(_dir_path),
+                    style=style,
+                )], href='#')
+            else:
+                style['color'] = 'red'
+                link = html.A([html.Span(
+                    _dir_name, id={'type': INVALID_DIR, 'index': i},
+                    title=convert_to_os_path(_dir_path),
+                    style=style
+                )], href='#')
+                icon = '❌'
+            
+            if icon:
+                dir_list.append(icon)
+            else:
+                dir_list.append('📂')
+            dir_list.append(link)
+            dir_list.append(html.Br())
+    else:
+        dir_list = no_update
+
+    if triggered_id == PATH_SELECT:
+        path = selected_path
     elif triggered_id == PATH_BTN:
         path = convert_to_os_path(Path(cwd).as_posix())
     elif triggered_id == PARENT_DIR:
@@ -151,12 +201,20 @@ def get_parent_directory_emg(stored_cwd, n_clicks, cwd, path_btn):
 
             is_dir = Path(full_path).is_dir()
             is_sel_file = sel_path == convert_to_os_path(full_path)
+            style = {
+                'color': 'black',
+                'whiteSpace': 'nowrap',
+                'overflow': 'hidden',
+                'textOverflow': 'ellipsis',
+                'display': 'inline-flex',
+                'alignItems': 'center',
+                'maxWidth': '500px',
+            }
+            # style = {}
             if is_dir:
-                style = {'fontWeight': 'bold'}
+                style['fontWeight'] = 'bold'
             elif is_sel_file:
-                style = {'backgroundColor': 'yellow'} 
-            else:
-                style = {}
+                style['backgroundColor'] = 'yellow'
             
             link = html.A([
                 html.Span(
@@ -169,20 +227,30 @@ def get_parent_directory_emg(stored_cwd, n_clicks, cwd, path_btn):
             cwd_files.append(link)
             cwd_files.append(html.Br())
 
-    return path, path_error, cwd_files
+    return path, path_error, cwd_files, dir_list
 
 
 @app.callback(
-    Output(STORED_CWD, 'data'),
+    Output(PATH_SELECT, 'data'),
     Input({'type': LISTED_FILES, 'index': ALL}, 'n_clicks'),
     State({'type': LISTED_FILES, 'index': ALL}, 'children'),
     State({'type': LISTED_FILES, 'index': ALL}, 'title'),
+    Input({'type': DIR_FAVORITES, 'index': ALL}, 'n_clicks'),
+    State({'type': DIR_FAVORITES, 'index': ALL}, 'children'),
+    State({'type': DIR_FAVORITES, 'index': ALL}, 'title'),
     State(CWD, 'children'))
-def store_clicked_file(n_clicks, href, title, cwd):
-    if not n_clicks or set(n_clicks) == {None}:
+def store_clicked_file(
+    n_clicks_f, href_f, title_f, n_clicks_d, href_d, title_d, cwd):
+    if ((not n_clicks_f or set(n_clicks_f) == {None})
+        and (not n_clicks_d or set(n_clicks_d) == {None})):
         raise PreventUpdate
+    trigger = ctx.triggered_id
     index = ctx.triggered_id['index']
-    return title[index]
+    if trigger['type'] == LISTED_FILES:
+        title = title_f[index] 
+    else:
+        title = title_d[index]
+    return title
 
 
 def read_file(file_path: str) -> np.ndarray:
