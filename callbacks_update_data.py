@@ -128,28 +128,33 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
             ('User', os.path.expanduser('~'), '👤'),
             ('Computer', os.path.abspath(os.sep), '💻'),
         ]
-        config = config.Config(verbose=False)
-
+        _config = config.Config(verbose=False)
+        config_paths = _config.get_config()
+        if config_paths:
+            for _dir_name, _dir_path in config_paths.items():
+                dir_inputs.append((_dir_name, _dir_path, '⭐'))
 
         dir_list = []
+        false_dirs = 0
         for i, (_dir_name, _dir_path, icon) in enumerate(dir_inputs):
             style={
-                'fontweight': 'bold',
                 'color': 'black',
                 'whiteSpace': 'nowrap',
                 'overflow': 'hidden',
                 'textOverflow': 'ellipsis',
                 'display': 'inline-flex',
                 'alignItems': 'center',
-                'maxWidth': '150px'}
-            
+                'maxWidth': '125px'}
+
             if os.path.exists(_dir_path):
                 link = html.A([html.Span(
-                    _dir_name, id={'type': DIR_FAVORITES, 'index': i},
+                    _dir_name,
+                    id={'type': DIR_FAVORITES,'index': i-false_dirs},
                     title=convert_to_os_path(_dir_path),
                     style=style,
                 )], href='#')
             else:
+                false_dirs += 1
                 style['color'] = 'red'
                 link = html.A([html.Span(
                     _dir_name, id={'type': INVALID_DIR, 'index': i},
@@ -157,7 +162,7 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
                     style=style
                 )], href='#')
                 icon = '❌'
-            
+
             if icon:
                 dir_list.append(icon)
             else:
