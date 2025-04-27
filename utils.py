@@ -28,40 +28,36 @@ colors = {
 }
 
 
+def update_plot_data(new_data, new_info, prev_data=None, prev_info=None):
+    if prev_data is None:
+        n_dim = new_data.ndim
+        n_samp = new_data.shape[0] if n_dim == 1 else new_data.shape[1]
+        n_ch = new_data.shape[0] if n_dim > 1 else 1
+        plot_data = np.reshape(new_data, (n_ch, n_samp, 1))
+    else:
+        _new_data = np.expand_dims(new_data, axis=2)
+        plot_data = np.concatenate((prev_data, _new_data), axis=2)
+
+    if prev_info is None:
+        plot_info = []
+    else:
+        plot_info = prev_info.copy()
+    plot_info.append(new_info)
+
+    return plot_data, plot_info
+
 # build the layout for emg graphs
-def add_emg_graphs(emg_data, fs, titles=None, default_processed=None, units=None):
-    if emg_data is None:
+def add_emg_graphs(plot_data, plot_info, fs, titles=None, units=None):
+    if plot_data is None:
         return []
 
     graphs = []
     show_legend = False
-
-    if emg_data.ndim == 1:
-        leads_n = 1
-        time_array = get_time_array(emg_data.shape[0], fs)
-        if default_processed is not None:
-            time_array_processed = get_time_array(
-                default_processed.shape[0], fs)
-    else:
-        leads_n = emg_data.shape[0]
-        time_array = get_time_array(emg_data.shape[1], fs)
-        if default_processed is not None:
-            time_array_processed = get_time_array(
-                default_processed.shape[1], fs)
+    leads_n = plot_data.shape[0]
+    time_array = get_time_array(plot_data.shape[1], fs)
 
     for i in range(leads_n):
-
         uid = 'emg' + str(i) + '-graph' + str(uuid4())
-
-        if leads_n == 1:
-            y = emg_data
-            if default_processed is not None:
-                y_default_process = default_processed
-        else:
-            y = emg_data[i]
-            if default_processed is not None:
-                y_default_process = default_processed[i]
-
         fig_title = "EMG Track " + str(i) + ": " + (
             titles[i] if titles is not None else "")
 
@@ -74,36 +70,26 @@ def add_emg_graphs(emg_data, fs, titles=None, default_processed=None, units=None
             resampled_trace_prefix_suffix=('', ''),
             show_mean_aggregation_size=False
         )
-
-        if default_processed is not None:
+        if plot_data.shape[2] > 1:
             show_legend = True
+        for j in range(plot_data.shape[2]):
             fig.add_trace(go.Scatter(
-                name="Default processing",
-                opacity=0.7,
+                name=plot_info[j]['signal'],
+                opacity=0.5,
                 line=dict(
-                    color='red',
+                    color=plot_info[j]['color'],
                     # dash='dot',
-                )
+                ),
+                visible=plot_info[j]['visible'],
             ),
-                hf_x=time_array_processed,
-                hf_y=np.ascontiguousarray(y_default_process),
+                hf_x=time_array,
+                hf_y=np.ascontiguousarray(plot_data[i, :, j]),
+                secondary_y=plot_info[j]['secondary'],
             )
-
-        fig.add_trace(go.Scatter(
-            name="Current processing",
-            opacity=0.5,
-            line=dict(
-                color='blue',
-            )
-        ),
-            hf_x=time_array,
-            hf_y=np.ascontiguousarray(y),
-            secondary_y=True
-        )
 
         fig.update_layout(
             xaxis_title="Time [s]",
-            yaxis_title=(units[i] if units is not None else "AU"),
+            yaxis_title=f'{titles[i]} ({units[i]})',
             legend_title="Legend",
         )
         fig.update_traces(showlegend=show_legend)
@@ -137,33 +123,19 @@ def add_emg_graphs(emg_data, fs, titles=None, default_processed=None, units=None
 
 
 # build the layout for ventilator graphs
-def add_ventilator_graphs(emg_data, fs, titles=None):
-    if emg_data is None:
+def add_ventilator_graphs(plot_data, plot_info, fs, titles=None, units=None):
+    if plot_data is None:
         return []
 
     graphs = []
     show_legend = False
-
-    if emg_data.ndim == 1:
-        leads_n = 0
-        time_array = get_time_array(emg_data.shape[0], fs)
-    else:
-        leads_n = emg_data.shape[0]
-        time_array = get_time_array(emg_data.shape[1], fs)
+    leads_n = plot_data.shape[0]
+    time_array = get_time_array(plot_data.shape[1], fs)
 
     for i in range(leads_n):
-
         uid = 'vent' + str(i) + '-graph' + str(uuid4())
-
-        if leads_n == 0:
-            y = emg_data
-        else:
-            y = emg_data[i]
-
-        if titles is None:
-            fig_title = "Ventilator Track " + str(i)
-        else:
-            fig_title = titles[i]
+        fig_title = "Ventilator Track " + str(i) + ": " + (
+            titles[i] if titles is not None else "")
 
         fig = FigureResampler(
             make_subplots(
@@ -174,20 +146,26 @@ def add_ventilator_graphs(emg_data, fs, titles=None):
             resampled_trace_prefix_suffix=('', ''),
             show_mean_aggregation_size=False
         )
-
-        fig.add_trace(go.Scatter(
-            name="Ventilator data",
-            opacity=0.5,
-            line=dict(
-                color='blue',
+        if plot_data.shape[2] > 1:
+            show_legend = True
+        for j in range(plot_data.shape[2]):
+            fig.add_trace(go.Scatter(
+                name=plot_info[j]['signal'],
+                opacity=0.5,
+                line=dict(
+                    color=plot_info[j]['color'],
+                    # dash='dot',
+                ),
+                visible=plot_info[j]['visible'],
+            ),
+                hf_x=time_array,
+                hf_y=np.ascontiguousarray(plot_data[i, :, j]),
+                secondary_y=plot_info[j]['secondary'],
             )
-        ),
-            hf_x=time_array,
-            hf_y=np.ascontiguousarray(y),
-        )
 
         fig.update_layout(
             xaxis_title="Time [s]",
+            yaxis_title=f'{titles[i]} ({units[i]})',
             legend_title="Legend",
         )
         fig.update_traces(showlegend=show_legend)
