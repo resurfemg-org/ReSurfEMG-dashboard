@@ -22,9 +22,9 @@ from dash.exceptions import PreventUpdate
 from definitions import (
     PATH_BTN, FILE_PATH_INPUT, PATH_SELECT, CWD, CWD_FILES, CONFIRM_CENTERED,
     MODAL_CENTERED, EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
-    LISTED_FILES, VENT_FREQUENCY_DIV, VENT_SAMPLING_FREQUENCY,
-    EMG_FREQUENCY_DIV, EMG_SAMPLING_FREQUENCY, VENT_FILE_UPDATED,
-    EMG_FILE_UPDATED, PATH_ERROR, DIR_FAVORITES, EMG_SAMPLING_FREQUENCY,
+    LISTED_FILES, VENT_fs_DIV, VENT_SAMPLING_fs,
+    EMG_fs_DIV, EMG_SAMPLING_fs, VENT_FILE_UPDATED,
+    EMG_FILE_UPDATED, PATH_ERROR, DIR_FAVORITES, EMG_SAMPLING_fs,
     INVALID_DIR)
 
 # variable to keep track of which upload button has been clicked
@@ -43,16 +43,16 @@ def convert_to_os_path(
         os.sep if os.altsep is None else os.altsep, os.sep)
     return readable_path
 
-@callback(Output(EMG_FREQUENCY_DIV, 'data'),
-          Input(EMG_SAMPLING_FREQUENCY, 'value'))
-def update_emg_frequency(freq, ):
+@callback(Output(EMG_fs_DIV, 'data'),
+          Input(EMG_SAMPLING_fs, 'value'))
+def update_emg_fs(freq, ):
     variables.set_emg_freq(freq)
     return 'set'
 
 
-@callback(Output(VENT_FREQUENCY_DIV, 'data'),
-          Input(VENT_SAMPLING_FREQUENCY, 'value'))
-def update_ventilator_frequency(freq):
+@callback(Output(VENT_fs_DIV, 'data'),
+          Input(VENT_SAMPLING_fs, 'value'))
+def update_ventilator_fs(freq):
     variables.set_ventilator_freq(freq)
     return 'set'
 
@@ -122,55 +122,52 @@ def toggle_modal(n1, n2, n3, is_open, selected_file, current_msg_emg, current_ms
 def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
     triggered_id = callback_context.triggered_id
     path = None
-    if triggered_id is None:
-        dir_inputs = [
-            ('Home', os.getcwd(), '🏠'), 
-            ('User', os.path.expanduser('~'), '👤'),
-            ('Computer', os.path.abspath(os.sep), '💻'),
-        ]
-        _config = config.Config(verbose=False)
-        config_paths = _config.get_config()
-        if config_paths:
-            for _dir_name, _dir_path in config_paths.items():
-                dir_inputs.append((_dir_name, _dir_path, '⭐'))
+    dir_inputs = [
+        ('Home', os.getcwd(), '🏠'), 
+        ('User', os.path.expanduser('~'), '👤'),
+        ('Computer', os.path.abspath(os.sep), '💻'),
+    ]
+    _config = config.Config(verbose=False)
+    config_paths = _config.get_config()
+    if config_paths:
+        for _dir_name, _dir_path in config_paths.items():
+            dir_inputs.append((_dir_name, _dir_path, '⭐'))
 
-        dir_list = []
-        false_dirs = 0
-        for i, (_dir_name, _dir_path, icon) in enumerate(dir_inputs):
-            style={
-                'color': 'black',
-                'whiteSpace': 'nowrap',
-                'overflow': 'hidden',
-                'textOverflow': 'ellipsis',
-                'display': 'inline-flex',
-                'alignItems': 'center',
-                'maxWidth': '125px'}
+    dir_list = []
+    false_dirs = 0
+    for i, (_dir_name, _dir_path, icon) in enumerate(dir_inputs):
+        style={
+            'color': 'black',
+            'whiteSpace': 'nowrap',
+            'overflow': 'hidden',
+            'textOverflow': 'ellipsis',
+            'display': 'inline-flex',
+            'alignItems': 'center',
+            'maxWidth': '125px'}
 
-            if os.path.exists(_dir_path):
-                link = html.A([html.Span(
-                    _dir_name,
-                    id={'type': DIR_FAVORITES,'index': i-false_dirs},
-                    title=convert_to_os_path(_dir_path),
-                    style=style,
-                )], href='#')
-            else:
-                false_dirs += 1
-                style['color'] = 'red'
-                link = html.A([html.Span(
-                    _dir_name, id={'type': INVALID_DIR, 'index': i},
-                    title=convert_to_os_path(_dir_path),
-                    style=style
-                )], href='#')
-                icon = '❌'
+        if os.path.exists(_dir_path):
+            link = html.A([html.Span(
+                _dir_name,
+                id={'type': DIR_FAVORITES,'index': i-false_dirs},
+                title=convert_to_os_path(_dir_path),
+                style=style,
+            )], href='#')
+        else:
+            false_dirs += 1
+            style['color'] = 'red'
+            link = html.A([html.Span(
+                _dir_name, id={'type': INVALID_DIR, 'index': i},
+                title=convert_to_os_path(_dir_path),
+                style=style
+            )], href='#')
+            icon = '❌'
 
-            if icon:
-                dir_list.append(icon)
-            else:
-                dir_list.append('📂')
-            dir_list.append(link)
-            dir_list.append(html.Br())
-    else:
-        dir_list = no_update
+        if icon:
+            dir_list.append(icon)
+        else:
+            dir_list.append('📂')
+        dir_list.append(link)
+        dir_list.append(html.Br())
 
     if triggered_id == PATH_SELECT:
         path = selected_path

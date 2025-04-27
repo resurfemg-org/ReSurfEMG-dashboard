@@ -16,16 +16,16 @@ from plotly_resampler import FigureResampler
           Input('emgventilator-secret-div', 'data'))
 def update_figure(data):
     emg_data = variables.get_emg_processed()
-    emg_frequency = variables.get_emg_freq()
+    emg_fs = variables.get_emg_freq()
     ventilator_data = variables.get_ventilator()
-    ventilator_frequency = variables.get_ventilator_freq()
+    ventilator_fs = variables.get_ventilator_freq()
 
     if emg_data.ndim == 1:
-        time_array_emg = utils.get_time_array(emg_data.shape[0], emg_frequency)
+        time_array_emg = utils.get_time_array(emg_data.shape[0], emg_fs)
     else:
-        time_array_emg = utils.get_time_array(emg_data.shape[1], emg_frequency)
+        time_array_emg = utils.get_time_array(emg_data.shape[1], emg_fs)
 
-    time_array_ventilator = utils.get_time_array(ventilator_data.shape[1], ventilator_frequency)
+    time_array_ventilator = utils.get_time_array(ventilator_data.shape[1], ventilator_fs)
 
     fig = FigureResampler(go.Figure())
     fig.add_trace(go.Scatter(),
