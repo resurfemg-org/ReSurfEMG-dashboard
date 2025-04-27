@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import resurfemg.helper_functions as hf
 import trace_updater
 from dash import dcc, html
-from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, GatingMethod
+from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, GatingMethod, processing_methods, get_defaults
 from plotly_resampler import FigureResampler
 from plotly.subplots import make_subplots
 from scipy.signal import find_peaks
@@ -222,6 +222,51 @@ def get_graph_dict():
 def set_dict(uid, figure):
     graph_dict_raw[uid] = figure
 
+# get auto generated layout for processing steps
+def get_processing_step_layout(item_id, method, fs=2048):
+    layout = []
+    cols = []
+
+    options = get_defaults(method, fs) or processing_methods[method] 
+    for option in options['arg_defaults']:
+        var_options = {}
+        if isinstance(options['arg_options'][option], tuple):
+            var_options.update({k: v for k, v in zip(
+                ['min', 'max', 'step'],
+                options['arg_options'][option]) if v is not None})
+            cols.append(
+            dbc.Col([
+                html.P(option.replace("_", " ").capitalize()),
+                dcc.Input(
+                    id=item_id,
+                    name=option,
+                    type="number",
+                    value=options['arg_defaults'][option],
+                    placeholder=option.replace("_", " ").capitalize(),
+                    min=var_options.get('min', None),
+                    max=var_options.get('max', None),
+                    step=var_options.get('step', None),
+                )]))
+        elif isinstance(options['arg_options'][option], dict):
+            var_options = {
+                'options': options['arg_options'][option]
+            }
+            cols.append(
+                dbc.Col([
+                    html.P(option.replace("_", " ").capitalize()),
+                    dbc.Select(
+                        id=item_id,
+                        name=option,
+                        options=[
+                            {"label": value.replace("_", " ").capitalize(),
+                             "value": key} for key, value 
+                             in var_options['options'].items()
+                        ],
+                        value=options['arg_defaults'][option]
+                        )]))
+        
+    layout = [dbc.Row(cols)]
+    return layout
 
 # get the layout for the band pass filter card
 def get_band_pass_layout(id_low, id_high, low_value=3, high_value=450):
@@ -311,6 +356,7 @@ def get_ecg_removal_layout(id_removal, value=definitions.default_ecg_removal_val
 def get_new_step_body(index, selected_value="0", core_body=None):
     if core_body is None:
         core_body = []
+    methods = get_defaults()
     new_card = dbc.Card([
         dbc.CardHeader([
             html.Button(
@@ -326,11 +372,7 @@ def get_new_step_body(index, selected_value="0", core_body=None):
         dbc.Select(
             id={"type": "additional-step-type", "index": str(index)},
             options=[
-                {"label": "", "value": "0"},
-                {"label": "Band-pass filter", "value": ProcessTypology.BAND_PASS.value},
-                {"label": "High-pass filter", "value": ProcessTypology.HIGH_PASS.value},
-                {"label": "Low-pass filter", "value": ProcessTypology.LOW_PASS.value},
-                {"label": "ECG removal", "value": ProcessTypology.ECG_REMOVAL.value},
+                {"label": key, "value": key} for key in methods
             ],
             value=selected_value
         ),
@@ -368,39 +410,6 @@ def get_idx_dict_list(dict_list, key, value):
                 if item.__contains__(key) and item[key] == value), None)
 
     return idx
-
-
-# apply the ecg removal, using the method selected
-def apply_ecg_removal(
-        removal_method: int, emg_signal, sample_rate, gating_method: int = 3):
-    emg_ecg = []
-    titles = []
-
-    if removal_method == EcgRemovalMethods.GATING.value:
-        # TODO: change with QRS identification when available in library
-        peak_width = 0.001
-        peak_fraction = 0.40
-        ecg_rms = hf.full_rolling_rms(emg_signal[0, :], 10)
-        peak_height = peak_fraction * (max(ecg_rms) - min(ecg_rms))
-        ecg_peaks, _ = find_peaks(ecg_rms,
-                                  height=peak_height,
-                                  width=peak_width * sample_rate,
-                                  distance=int(sample_rate / 3))
-
-        titles.append("Filtered Track 0")
-        for lead in range(1, emg_signal.shape[0]):
-            emg_clean = hf.gating(emg_signal[lead, :], ecg_peaks, method=gating_method)
-            emg_ecg.append(emg_clean)
-            titles.append("Filtered Track " + str(lead))
-
-        emg_ecg = np.array(emg_ecg)
-        emg_ecg = np.insert(emg_ecg, 0, emg_signal[0], 0)
-
-    else:
-        emg_ecg = emg_signal
-        titles = None
-
-    return emg_ecg, titles
 
 
 # build the json containing the params for the cutter
