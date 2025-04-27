@@ -63,7 +63,7 @@ class Variables:
         self.vent_timeseries = vent_timeseries
 
     def get_vent_timeseries(self):
-        return self.emg_timeseries
+        return self.vent_timeseries
 
     def set_emg_freq(self, emg_freq):
         self.emg_freq = emg_freq

@@ -18,12 +18,6 @@ import numpy as np
 def show_raw_data(delete):
     emg_data = variables.get_emg()
     emg_timeseries = variables.get_emg_timeseries()
-    if emg_timeseries is not None:
-        titles = [ts.label for ts in emg_timeseries]
-        units = [ts.y_units for ts in emg_timeseries]
-    else:
-        titles = None
-        units = None
     hidden = True
 
     trigger_id = ctx.triggered_id
@@ -37,8 +31,15 @@ def show_raw_data(delete):
     else:
         if emg_data is not None:
             emg_fs = variables.get_emg_freq()
+            plot_data, plot_info = utils.update_plot_data(
+                new_data=emg_data,
+                new_info={'signal':'Raw', 'color':'blue', 'secondary':False, 
+                          'visible': True}
+            )
+            titles = [ts.label or 'Channel' for ts in emg_timeseries]
+            units = [ts.y_units or 'AU' for ts in emg_timeseries]
             children_emg = utils.add_emg_graphs(
-                np.array(emg_data), emg_fs, titles=titles, units=units)
+                plot_data, plot_info, emg_fs, titles=titles, units=units)
             hidden = False
         else:
             children_emg = []
@@ -52,6 +53,7 @@ def show_raw_data(delete):
           Input('ventilator-delete-button', 'n_clicks'))
 def show_raw_data(delete):
     ventilator_data = variables.get_ventilator()
+    vent_timeseries = variables.get_vent_timeseries()
     hidden = True
 
     trigger_id = ctx.triggered_id
@@ -64,8 +66,17 @@ def show_raw_data(delete):
         children_vent = []
     else:
         if ventilator_data is not None:
-            ventilator_fs = variables.get_ventilator_freq()
-            children_vent = utils.add_ventilator_graphs(np.array(ventilator_data), ventilator_fs)
+            fs_vent = variables.get_ventilator_freq()
+            plot_data, plot_info = utils.update_plot_data(
+                new_data=ventilator_data,
+                new_info={'signal':'Raw', 'color':'blue', 'secondary':False,
+                          'visible': True}
+            )
+            titles = [ts.label or 'Channel' for ts in vent_timeseries]
+            units = [ts.y_units or 'AU' for ts in vent_timeseries]
+
+            children_vent = utils.add_ventilator_graphs(
+                plot_data, plot_info, fs_vent, titles=titles, units=units)
             hidden = False
         else:
             children_vent = []

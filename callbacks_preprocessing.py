@@ -18,41 +18,24 @@ from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, FILE
 card_counter = 0
 json_parameters = []
 
+# inspect.getfullargspec(TimeSeries)
+# inspect.getmembers(TimeSeries, predicate=inspect.isfunction)
 
 # on loading add the emg graphs
-@callback(Output('preprocessing-original-container', 'children'),
-          Output('emg-filename-preprocessing', 'children'),
+@callback(Output('emg-filename-preprocessing', 'children'),
           Input('load-preprocessing-div', 'data'))
 def show_raw_data(data):
     global card_counter
 
-    emg_data = variables.get_emg()
-    emg_frequency = variables.get_emg_freq()
     filename = variables.get_emg_filename()
-    emg_timeseries = variables.get_emg_timeseries()
-    if emg_timeseries is not None:
-        titles = [ts.label for ts in emg_timeseries]
-        units = [ts.y_units for ts in emg_timeseries]
-    else:   
-        titles = None
-        units = None
-    # if the data have been loaded, show the graphs
 
-    if emg_data is not None:
-        children_emg = utils.add_emg_graphs(
-            np.array(emg_data), emg_frequency, titles=titles, units=units)
-    else:
-        children_emg = []
-
-    return children_emg, filename
+    return filename
 
 
 # apply the processing on the button click
 @callback(Output('preprocessing-processed-container', 'children'),
           Output('download-data-btn', 'disabled'),
           Input('apply-pipeline-btn', 'n_clicks'),
-          State('tail-cut-percent', 'value'),
-          State('tail-cut-tolerance', 'value'),
           State('base-filter-low', 'value'),
           State('base-filter-high', 'value'),
           State({"type": "ecg-filter-select", "index": "0"}, "value"),
@@ -68,8 +51,6 @@ def show_raw_data(data):
           State({"type": "gating-method-type", "index": ALL}, "value"),
           State({"type": "gating-method-type", "index": ALL}, "id"))
 def show_data(click,
-              cut_percent,
-              cut_tolerance,
               low_freq,
               high_freq_default,
               ecg_method,
@@ -94,10 +75,10 @@ def show_data(click,
 
     emg_data = variables.get_emg()
     emg_timeseries = variables.get_emg_timeseries()
-    sample_rate = variables.get_emg_freq()
+    fs = variables.get_emg_freq()
 
     # we have to make sure that the cut-off frequencies are in an acceptable range
-    high_freq = utils.check_default_cut_frequency(high_freq_default, sample_rate)
+    high_freq = utils.check_default_cut_fs(high_freq_default, fs)
 
     # if data have been loaded, apply the processing
     if emg_data is not None:
@@ -112,7 +93,7 @@ def show_data(click,
         # emg_data_filtered = hf.emg_bandpass_butter_sample(emg_cut,
         #                                                   low_freq,
         #                                                   high_freq,
-        #                                                   sample_rate)
+        #                                                   fs)
         json_parameters.append(utils.build_bandpass_params_json(
             2, low_freq, high_freq))
 
@@ -131,8 +112,9 @@ def show_data(click,
         #         4, EcgRemovalMethods(ecg_method)))
 
         # emg_ecg, titles = utils.apply_ecg_removal(
-        #   ecg_method, emg_cut_final, sample_rate, gating_method_default)
-        emg_timeseries.run('gating', overwrite=True)
+        #   ecg_method, emg_cut_final, fs, gating_method_default)
+        emg_timeseries.run('get_ecg_peaks', overwrite=True)
+        emg_timeseries.run('gating')
 
         # TODO: Implement extra processing steps
         titles = [ts.label for ts in emg_timeseries]
@@ -150,12 +132,12 @@ def show_data(click,
 
         #         low_cut = additional_low[idx_low]
         #         high_cut_input = additional_high[idx_high]
-        #         high_cut = utils.check_default_cut_frequency(
-        #             high_cut_input, sample_rate)
+        #         high_cut = utils.check_default_cut_fs(
+        #             high_cut_input, fs)
 
         #         new_step_emg = filt.emg_bandpass_butter(
         #             new_step_emg, high_pass=low_cut, low_pass=high_cut,
-        #             fs_emg=sample_rate)
+        #             fs_emg=fs)
         #         json_parameters.append(utils.build_bandpass_params_json(
         #             len(json_parameters) + 1, low_cut, high_cut))
 
@@ -165,7 +147,7 @@ def show_data(click,
         #         low_cut = additional_low[idx]
 
         #         new_step_emg = filt.emg_highpass_butter(
-        #             new_step_emg, high_pass=low_cut, fs_emg=sample_rate)
+        #             new_step_emg, high_pass=low_cut, fs_emg=fs)
         #         json_parameters.append(utils.build_highpass_params_json(
         #             len(json_parameters) + 1, low_cut))
 
@@ -174,12 +156,12 @@ def show_data(click,
         #             additional_high_idx, 'index', card_id)
 
         #         high_cut_input = additional_high[idx]
-        #         high_cut = utils.check_default_cut_frequency(
-        #             high_cut_input, sample_rate)
+        #         high_cut = utils.check_default_cut_fs(
+        #             high_cut_input, fs)
 
         #         # TODO: add function when it will be available in helper_functions
         #         new_step_emg = filt.emg_lowpass_butter(
-        #             new_step_emg, low_cut, sample_rate)
+        #             new_step_emg, low_cut, fs)
         #         json_parameters.append(utils.build_lowpass_params_json(
         #             n + 5, high_cut))
 
@@ -216,7 +198,7 @@ def show_data(click,
         #         new_step_emg, titles = utils.apply_ecg_removal(
         #             ecg_additional_method,
         #             tmp_matrix,
-        #             sample_rate,
+        #             fs,
         #             gating_method_type)
 
         # At the end, extract the envelope
@@ -243,8 +225,26 @@ def show_data(click,
             # in case the dimension is different, the ecg lead is not included
             preprocessed_def = preprocessed_def[1:leads_displayed + 1, :]
 
+        plot_data, plot_info = utils.update_plot_data(
+            new_data=emg_data,
+            new_info={'signal':'Raw', 'color':'black', 'secondary':True,
+                      'visible': 'legendonly'},
+        )
+        plot_data, plot_info = utils.update_plot_data(
+            new_data=preprocessed_def,
+            new_info={'signal':'Filtered', 'color':'blue', 'secondary':False,
+                      'visible': True},
+            prev_data=plot_data, prev_info=plot_info
+        )
+        plot_data, plot_info = utils.update_plot_data(
+            new_data=emg_env,
+            new_info={'signal':'Envelope', 'color':'red', 'secondary':False,
+                      'visible': True},
+            prev_data=plot_data, prev_info=plot_info
+        )
+
         children_emg = utils.add_emg_graphs(
-            emg_env, sample_rate, titles, preprocessed_def, units=units)
+            plot_data, plot_info, fs, titles, units)
         # enable the data download
         save_data_enabled = False
     else:  # if no data have been uploaded
@@ -427,7 +427,7 @@ def populate_steps(confirm_upload, confirm_reset, params_file):
 
     if (trigger_id == 'confirm-reset' and confirm_reset) or trigger_id is None:
         bandpass_low = definitions.default_bandpass_low
-        bandpass_high = utils.check_default_cut_frequency(definitions.default_bandpass_high,
+        bandpass_high = utils.check_default_cut_fs(definitions.default_bandpass_high,
                                                           variables.get_emg_freq())
         first_cut_percentage = definitions.default_first_cut_percentage
         first_cut_tolerance = definitions.default_first_cut_tolerance
@@ -439,8 +439,8 @@ def populate_steps(confirm_upload, confirm_reset, params_file):
 
         first_cut_percentage = data[1]['percentage']
         first_cut_tolerance = data[1]['tolerance']
-        bandpass_low = data[2]['low_frequency']
-        bandpass_high = data[2]['high_frequency']
+        bandpass_low = data[2]['low_fs']
+        bandpass_high = data[2]['high_fs']
 
         ecg_removal = data[4]['method']
         ecg_removal_value = utils.get_ecg_removal_value(ecg_removal)
