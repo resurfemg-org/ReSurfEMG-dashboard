@@ -100,8 +100,8 @@ def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_inp
     global features_df
 
     data = variables.get_emg_processed()
-    frequency = variables.get_emg_freq()
-    time_array = utils.get_time_array(data[int(lead_n)].shape[0], frequency)
+    fs = variables.get_emg_freq()
+    time_array = utils.get_time_array(data[int(lead_n)].shape[0], fs)
 
     if slidebar_stat is not None and 'xaxis.range' in slidebar_stat:
         start_sample = (np.abs(time_array - slidebar_stat['xaxis.range'][0])).argmin()
@@ -115,7 +115,7 @@ def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_inp
 
     breaths = get_breaths(int(lead_n), start_sample, stop_sample, method_stat)
 
-    features_df = create_features_dataframe(breaths, frequency)
+    features_df = create_features_dataframe(breaths, fs)
 
     features = [{ComputedFeatures.BREATHS_COUNT: len(breaths),
                  ComputedFeatures.MAX_AMPLITUDE: str(np.round(features_df['maxima'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
@@ -210,7 +210,6 @@ def get_breaths(n_channel: int, start_sample: int, stop_sample: int, method: str
 
     """
     emg_timeseries = variables.get_emg_timeseries()
-    print(n_channel)
     emg = emg_timeseries[n_channel].y_env
     
     # TODO: Introduce different methods for breath detection
@@ -349,15 +348,15 @@ def get_breaths_auc(breaths: List[Breath]) -> List[float]:
     return auc
 
 
-def get_breaths_rise_time(breaths: List[Breath], sampling_frequency: int) -> List[float]:
+def get_breaths_rise_time(breaths: List[Breath], sampling_fs: int) -> List[float]:
     """
     Computes and returns the numpy array containing the rise time in milliseconds
     of each breath of the breaths list
         Args:
             breaths: list of the breaths
-            sampling_frequency: sampling frequency of the EMG
+            sampling_fs: sampling fs of the EMG
     """
-    samples_to_milliseconds = sampling_frequency/1000
+    samples_to_milliseconds = sampling_fs/1000
     rise_times = [
         feat.time_to_peak(
             breath.amplitude,
@@ -389,12 +388,12 @@ def get_breaths_peak_position(breaths: List[Breath]) -> List[float]:
     return rise_times
 
 
-def create_features_dataframe(breaths: List[Breath], sampling_frequency: int) -> pd.DataFrame:
+def create_features_dataframe(breaths: List[Breath], sampling_fs: int) -> pd.DataFrame:
     """
     creates the pandas dataframe containing all the computed features
         Args:
             breaths: list of the breaths
-            sampling_frequency: sampling frequency of the EMG
+            sampling_fs: sampling fs of the EMG
     """
     start_samples = []
     stop_samples = []
@@ -405,7 +404,7 @@ def create_features_dataframe(breaths: List[Breath], sampling_frequency: int) ->
     length = get_breaths_length(breaths)
     maxima = get_breaths_maxima(breaths)
     auc = get_breaths_auc(breaths)
-    rise_times = get_breaths_rise_time(breaths, sampling_frequency=sampling_frequency)
+    rise_times = get_breaths_rise_time(breaths, sampling_fs=sampling_fs)
     peak_position = get_breaths_peak_position(breaths)
 
     d = {'start_samples': start_samples,

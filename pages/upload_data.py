@@ -11,8 +11,8 @@ import dash_bootstrap_components as dbc
 from definitions import (PATH_BTN, FILE_PATH_INPUT, PATH_SELECT, CWD,
                          CWD_FILES, CONFIRM_CENTERED, MODAL_CENTERED,
                          EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
-                         EMG_SAMPLING_FREQUENCY, VENT_SAMPLING_FREQUENCY,
-                         VENT_FREQUENCY_DIV, EMG_FREQUENCY_DIV,
+                         EMG_SAMPLING_fs, VENT_SAMPLING_fs,
+                         VENT_fs_DIV, EMG_fs_DIV,
                          VENT_FILE_UPDATED, EMG_FILE_UPDATED, PATH_ERROR,
                          DIR_FAVORITES)
 from dash import html, dcc
@@ -93,7 +93,7 @@ def layout():
 
             dbc.Col([html.Div([
                 dcc.Input(
-                    id=EMG_SAMPLING_FREQUENCY,
+                    id=EMG_SAMPLING_fs,
                     type="number",
                     placeholder="EMG sampling frequency",
                     value=2048
@@ -121,7 +121,7 @@ def layout():
             dbc.Col([html.Div([
 
                 dcc.Input(
-                    id=VENT_SAMPLING_FREQUENCY,
+                    id=VENT_SAMPLING_fs,
                     type="number",
                     placeholder="Ventilator sampling frequency",
                     value=100
@@ -138,6 +138,6 @@ def layout():
         ]),
         # the following elements are only needed
         # to provide outputs to the callbacks
-        html.Div(id=EMG_FREQUENCY_DIV),
-        html.Div(id=VENT_FREQUENCY_DIV)
+        html.Div(id=EMG_fs_DIV),
+        html.Div(id=VENT_fs_DIV)
     ])

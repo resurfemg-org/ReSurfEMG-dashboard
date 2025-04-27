@@ -29,7 +29,7 @@ colors = {
 
 
 # build the layout for emg graphs
-def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
+def add_emg_graphs(emg_data, fs, titles=None, default_processed=None, units=None):
     if emg_data is None:
         return []
 
@@ -38,14 +38,16 @@ def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
 
     if emg_data.ndim == 1:
         leads_n = 1
-        time_array = get_time_array(emg_data.shape[0], frequency)
+        time_array = get_time_array(emg_data.shape[0], fs)
         if default_processed is not None:
-            time_array_processed = get_time_array(default_processed.shape[0], frequency)
+            time_array_processed = get_time_array(
+                default_processed.shape[0], fs)
     else:
         leads_n = emg_data.shape[0]
-        time_array = get_time_array(emg_data.shape[1], frequency)
+        time_array = get_time_array(emg_data.shape[1], fs)
         if default_processed is not None:
-            time_array_processed = get_time_array(default_processed.shape[1], frequency)
+            time_array_processed = get_time_array(
+                default_processed.shape[1], fs)
 
     for i in range(leads_n):
 
@@ -60,14 +62,14 @@ def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
             if default_processed is not None:
                 y_default_process = default_processed[i]
 
-        if titles is None:
-            fig_title = "EMG Track " + str(i)
-        else:
-            fig_title = titles[i]
+        fig_title = "EMG Track " + str(i) + ": " + (
+            titles[i] if titles is not None else "")
 
         fig = FigureResampler(
             make_subplots(
-                specs=[[{"secondary_y": True}]]
+                specs=[[{"secondary_y": True}]],
+                vertical_spacing=0.1,
+                row_heights=[1.0],
             ),
             resampled_trace_prefix_suffix=('', ''),
             show_mean_aggregation_size=False
@@ -101,11 +103,10 @@ def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
 
         fig.update_layout(
             xaxis_title="Time [s]",
-            yaxis_title="micro Volts",
-            legend_title="Legend"
+            yaxis_title=(units[i] if units is not None else "AU"),
+            legend_title="Legend",
         )
         fig.update_traces(showlegend=show_legend)
-
         graphs.append(
             dbc.Switch(
                 id={"type": "emg-graph-switch", "index": uid},
@@ -117,7 +118,8 @@ def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
             dbc.Collapse([
                 dcc.Graph(
                     id={"type": "dynamic-graph", "index": uid},
-                    figure=fig
+                    figure=fig,
+                    config={"displaylogo": False},
                 )
             ],
                 id={"type": "emg-graph-collapse", "index": uid},
@@ -135,7 +137,7 @@ def add_emg_graphs(emg_data, frequency, titles=None, default_processed=None):
 
 
 # build the layout for ventilator graphs
-def add_ventilator_graphs(emg_data, frequency, titles=None):
+def add_ventilator_graphs(emg_data, fs, titles=None):
     if emg_data is None:
         return []
 
@@ -144,10 +146,10 @@ def add_ventilator_graphs(emg_data, frequency, titles=None):
 
     if emg_data.ndim == 1:
         leads_n = 0
-        time_array = get_time_array(emg_data.shape[0], frequency)
+        time_array = get_time_array(emg_data.shape[0], fs)
     else:
         leads_n = emg_data.shape[0]
-        time_array = get_time_array(emg_data.shape[1], frequency)
+        time_array = get_time_array(emg_data.shape[1], fs)
 
     for i in range(leads_n):
 
@@ -165,7 +167,9 @@ def add_ventilator_graphs(emg_data, frequency, titles=None):
 
         fig = FigureResampler(
             make_subplots(
-                specs=[[{"secondary_y": True}]]
+                specs=[[{"secondary_y": True}]],
+                vertical_spacing=0.1,
+                row_heights=[1.0],
             ),
             resampled_trace_prefix_suffix=('', ''),
             show_mean_aggregation_size=False
@@ -184,7 +188,7 @@ def add_ventilator_graphs(emg_data, frequency, titles=None):
 
         fig.update_layout(
             xaxis_title="Time [s]",
-            legend_title="Legend"
+            legend_title="Legend",
         )
         fig.update_traces(showlegend=show_legend)
 
@@ -199,7 +203,8 @@ def add_ventilator_graphs(emg_data, frequency, titles=None):
             dbc.Collapse([
                 dcc.Graph(
                     id={"type": "dynamic-graph", "index": uid},
-                    figure=fig
+                    figure=fig,
+                    config={"displaylogo": False},
                 )
             ],
                 id={"type": "emg-graph-collapse", "index": uid},
@@ -217,15 +222,22 @@ def add_ventilator_graphs(emg_data, frequency, titles=None):
 
 
 # get the time array, computed from the sampling rate
-def get_time_array(data_size, frequency):
-    time_array = np.arange(0, data_size / frequency, 1 / frequency)
+def get_time_array(data_size, fs):
+    time_array = np.arange(0, data_size / fs, 1 / fs)
 
     return time_array
 
 
 # function needed to update graphs using plotly_resampler
 def get_dict(graph_id_dict, relayoutdata):
-    return graph_dict_raw.get(graph_id_dict["index"])._construct_update_data(relayoutdata)
+    return graph_dict_raw.get(
+        graph_id_dict["index"])._construct_update_data(relayoutdata)
+
+def get_graph_fig(dict_key):
+    return graph_dict_raw.get(dict_key)
+
+def get_graph_dict():
+    return graph_dict_raw
 
 
 # function needed to update graphs using plotly_resampler
@@ -238,7 +250,7 @@ def get_band_pass_layout(id_low, id_high, low_value=3, high_value=450):
     layout = [
         dbc.Row([
             dbc.Col([
-                html.P("Low cut frequency"),
+                html.P("Low cut fs"),
                 dcc.Input(
                     id=id_low,
                     type="number",
@@ -247,7 +259,7 @@ def get_band_pass_layout(id_low, id_high, low_value=3, high_value=450):
                 )
             ]),
             dbc.Col([
-                html.P("High cut frequency"),
+                html.P("High cut fs"),
                 dcc.Input(
                     id=id_high,
                     type="number",
@@ -262,15 +274,15 @@ def get_band_pass_layout(id_low, id_high, low_value=3, high_value=450):
 
 
 # get the layout for the high pass filter card
-def get_high_pass_layout(id_low, cut_frequency=3):
+def get_high_pass_layout(id_low, cut_fs=3):
     layout = [
         dbc.Col([
-            html.P("Low cut frequency"),
+            html.P("Low cut fs"),
             dcc.Input(
                 id=id_low,
                 type="number",
                 placeholder="low cut",
-                value=cut_frequency
+                value=cut_fs
             )
         ])
     ]
@@ -279,15 +291,15 @@ def get_high_pass_layout(id_low, cut_frequency=3):
 
 
 # get the layout for the low pass filter card
-def get_low_pass_layout(id_low, cut_frequency=450):
+def get_low_pass_layout(id_low, cut_fs=450):
     layout = [
         dbc.Col([
-            html.P("High cut frequency"),
+            html.P("High cut fs"),
             dcc.Input(
                 id=id_low,
                 type="number",
                 placeholder="high cut",
-                value=cut_frequency
+                value=cut_fs
             )
         ])
     ]
@@ -380,27 +392,9 @@ def get_idx_dict_list(dict_list, key, value):
     return idx
 
 
-# compute the envelope, using the method selected
-def get_envelope(envelope_method: int, emg_signal, sample_rate):
-    if envelope_method == EnvelopeMethod.RMS.value:
-        # I set the window here to 100ms, but this may be changed
-        if emg_signal.ndim == 1:
-            emg_env = hf.full_rolling_rms(abs(emg_signal), int(sample_rate / 10))
-        else:
-            emg_env = np.array([hf.full_rolling_rms(lead, int(sample_rate / 10)) for lead in abs(emg_signal)])
-    elif envelope_method == EnvelopeMethod.FILTERING.value:
-        # THIS SHOULD BE CHANGED TO LOW PASS!
-        cut_frequency = check_default_cut_frequency(definitions.default_envelope_cut_frequency,
-                                                    sample_rate)
-        emg_env = hf.emg_highpass_butter(abs(emg_signal), cut_frequency, sample_rate)
-    else:
-        emg_env = emg_signal
-
-    return emg_env
-
-
 # apply the ecg removal, using the method selected
-def apply_ecg_removal(removal_method: int, emg_signal, sample_rate, gating_method: int = 3):
+def apply_ecg_removal(
+        removal_method: int, emg_signal, sample_rate, gating_method: int = 3):
     emg_ecg = []
     titles = []
 
@@ -444,34 +438,34 @@ def build_cutter_params_json(step_number: int, percentage: int, tolerance: int):
 
 
 # build the json containing the params for the band pass filter
-def build_bandpass_params_json(step_number: int, low_frequency: int, high_frequency: int):
+def build_bandpass_params_json(step_number: int, low_fs: int, high_fs: int):
     data = {
         'step_number': step_number,
         'step_type': ProcessTypology.BAND_PASS.name,
-        'low_frequency': low_frequency,
-        'high_frequency': high_frequency
+        'low_fs': low_fs,
+        'high_fs': high_fs
     }
 
     return data
 
 
 # build the json containing the params for the high pass filter
-def build_highpass_params_json(step_number: int, cut_frequency: int):
+def build_highpass_params_json(step_number: int, cut_fs: int):
     data = {
         'step_number': step_number,
         'step_type': ProcessTypology.HIGH_PASS.name,
-        'cut_frequency': cut_frequency
+        'cut_fs': cut_fs
     }
 
     return data
 
 
 # build the json containing the params for the low pass filter
-def build_lowpass_params_json(step_number: int, cut_frequency: int):
+def build_lowpass_params_json(step_number: int, cut_fs: int):
     data = {
         'step_number': step_number,
         'step_type': ProcessTypology.LOW_PASS.name,
-        'cut_frequency': cut_frequency
+        'cut_fs': cut_fs
     }
 
     return data
@@ -542,16 +536,16 @@ def upload_additional_steps(params_file):
         if step_type == ProcessTypology.BAND_PASS.name:
             new_card = get_band_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
                                             {"type": "additional-step-high", "index": str(card_counter_local)},
-                                            data[steps_index]['low_frequency'],
-                                            data[steps_index]['high_frequency'])
+                                            data[steps_index]['low_fs'],
+                                            data[steps_index]['high_fs'])
             list_value = ProcessTypology.BAND_PASS.value
         elif step_type == ProcessTypology.HIGH_PASS.name:
             new_card = get_high_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
-                                            data[steps_index]['cut_frequency'])
+                                            data[steps_index]['cut_fs'])
             list_value = ProcessTypology.HIGH_PASS.value
         elif step_type == ProcessTypology.LOW_PASS.name:
             new_card = get_high_pass_layout({"type": "additional-step-high", "index": str(card_counter_local)},
-                                            data[steps_index]['cut_frequency'])
+                                            data[steps_index]['cut_fs'])
             list_value = ProcessTypology.LOW_PASS.value
         elif step_type == ProcessTypology.ECG_REMOVAL.name:
             ecg_removal_value = get_ecg_removal_value(data[steps_index]['method'])
@@ -565,18 +559,18 @@ def upload_additional_steps(params_file):
     return core_body, card_counter_local
 
 
-def check_default_cut_frequency(default_frequency: int, sampling_rate: int) -> int:
-    # check compatibility of the base filter upper cut frequency
-    # if the sampling frequency is lower than twice the default value
+def check_default_cut_fs(default_fs: int, sampling_rate: int) -> int:
+    # check compatibility of the base filter upper cut fs
+    # if the sampling fs is lower than twice the default value
     # we need to adjust it
 
-    high_cut = default_frequency
+    high_cut = default_fs
 
     if sampling_rate is None:
-        return default_frequency
+        return default_fs
 
-    if default_frequency > sampling_rate/2:
-        # -1 because the butter filter fails if the cut-off frequency
+    if default_fs > sampling_rate/2:
+        # -1 because the butter filter fails if the cut-off fs
         # is equal to half the sampling rate
 
         high_cut = int(sampling_rate / 2) - 1

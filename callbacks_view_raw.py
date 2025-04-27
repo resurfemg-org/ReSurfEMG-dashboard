@@ -36,9 +36,9 @@ def show_raw_data(delete):
         children_emg = []
     else:
         if emg_data is not None:
-            emg_frequency = variables.get_emg_freq()
+            emg_fs = variables.get_emg_freq()
             children_emg = utils.add_emg_graphs(
-                np.array(emg_data), emg_frequency, titles=titles, units=units)
+                np.array(emg_data), emg_fs, titles=titles, units=units)
             hidden = False
         else:
             children_emg = []
@@ -64,8 +64,8 @@ def show_raw_data(delete):
         children_vent = []
     else:
         if ventilator_data is not None:
-            ventilator_frequency = variables.get_ventilator_freq()
-            children_vent = utils.add_ventilator_graphs(np.array(ventilator_data), ventilator_frequency)
+            ventilator_fs = variables.get_ventilator_freq()
+            children_vent = utils.add_ventilator_graphs(np.array(ventilator_data), ventilator_fs)
             hidden = False
         else:
             children_vent = []
