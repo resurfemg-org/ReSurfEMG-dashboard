@@ -329,16 +329,21 @@ def add_step(click, close, confirm_upload, confirm_reset, params_file, previous_
           State({"type": "additional-step-core", "index": MATCH}, "id"),
           prevent_initial_call=True)
 def get_body(selected_value, card_id):
-    new_section = []
-    if selected_value == ProcessTypology.BAND_PASS.value:
-        new_section = utils.get_band_pass_layout({"type": "additional-step-low", "index": card_id['index']},
-                                                 {"type": "additional-step-high", "index": card_id['index']})
-    elif selected_value == ProcessTypology.HIGH_PASS.value:
-        new_section = utils.get_high_pass_layout({"type": "additional-step-low", "index": card_id['index']})
-    elif selected_value == ProcessTypology.LOW_PASS.value:
-        new_section = utils.get_low_pass_layout({"type": "additional-step-high", "index": card_id['index']})
-    elif selected_value == ProcessTypology.ECG_REMOVAL.value:
-        new_section = utils.get_ecg_removal_layout({"type": "ecg-filter-select", "index": card_id['index']})
+    # new_section = []
+    new_section = utils.get_processing_step_layout(card_id, selected_value)
+    # if selected_value == ProcessTypology.BAND_PASS.value:
+    #     # new_section = utils.get_band_pass_layout({"type": "additional-step-low", "index": card_id['index']},
+    #     #                                          {"type": "additional-step-high", "index": card_id['index']})
+    #     new_section = utils.get_processing_step_layout(card_id, 'filter_emg')
+    #     # print(new_section)
+    #     # print()
+    #     # print(test)
+    # elif selected_value == ProcessTypology.HIGH_PASS.value:
+    #     new_section = utils.get_high_pass_layout({"type": "additional-step-low", "index": card_id['index']})
+    # elif selected_value == ProcessTypology.LOW_PASS.value:
+    #     new_section = utils.get_low_pass_layout({"type": "additional-step-high", "index": card_id['index']})
+    # elif selected_value == ProcessTypology.ECG_REMOVAL.value:
+    #     new_section = utils.get_ecg_removal_layout({"type": "ecg-filter-select", "index": card_id['index']})
 
     return new_section
 
