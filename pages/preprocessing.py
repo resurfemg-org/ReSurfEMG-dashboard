@@ -15,78 +15,6 @@ from definitions import EnvelopeMethod
 
 dash.register_page(__name__, path='/preprocessing')
 
-tailcut_card = dbc.Card([
-    dbc.CardHeader("Cut tail"),
-    dbc.CardBody([
-        dbc.Row([
-            dbc.Col([
-                html.P("Tail portion [%]"),
-                dcc.Input(
-                    id='tail-cut-percent',
-                    type="number",
-                    placeholder="%",
-                    value=definitions.default_first_cut_percentage
-                )
-            ]),
-            dbc.Col([
-                html.P("Tolerance on variation"),
-                dcc.Input(
-                    id='tail-cut-tolerance',
-                    type="number",
-                    placeholder="%",
-                    value=definitions.default_first_cut_tolerance
-                )
-            ])
-        ])
-    ])
-])
-
-baseline_card = dbc.Card([
-    dbc.CardHeader("Baseline removal"),
-    dbc.CardBody([
-        dbc.Row([
-            dbc.Col([
-                html.P("Low cut frequency"),
-                dcc.Input(
-                    id='base-filter-low',
-                    type="number",
-                    placeholder="low cut",
-                    value=definitions.default_bandpass_low
-                )
-            ]),
-            dbc.Col([
-                html.P("High cut frequency"),
-                dcc.Input(
-                    id='base-filter-high',
-                    type="number",
-                    placeholder="high cut",
-                    value=definitions.default_bandpass_high
-                )
-            ])
-        ])
-    ])
-])
-
-ecg_card = dbc.Card([
-    dbc.CardHeader("ECG removal"),
-    utils.get_ecg_removal_layout({"type": "ecg-filter-select", "index": "0"})
-],
-    id={"type": "ecg-removal-type", "index": "0"})
-
-envelope_card = dbc.Card([
-    dbc.CardHeader("Envelope extraction"),
-    dbc.Label("Envelope computation method"),
-    dbc.Select(
-        id="envelope-extraction-select",
-        options=[
-            {"label": "RMS", "value": EnvelopeMethod.RMS},
-            {"label": "Filtering", "value": EnvelopeMethod.FILTERING},
-            {"label": "None", "value": EnvelopeMethod.NONE},
-        ],
-        value=definitions.default_envelope_value
-    )
-])
-
 layout = html.Div([
     html.P(),
     html.Div(id='emg-filename-preprocessing'),
@@ -176,12 +104,6 @@ layout = html.Div([
                         html.Div("Restore default pipeline",
                                  style={'text-align': 'center'}),
 
-                        tailcut_card,
-                        html.P(),
-                        baseline_card,
-                        html.P(),
-                        ecg_card,
-                        html.P(),
                         html.Div([], id='custom-preprocessing-steps'),
 
                         html.Div([
@@ -200,8 +122,6 @@ layout = html.Div([
                         ],
                             style={'text-align': 'center'}
                         ),
-                        html.P(),
-                        envelope_card
                     ]),
                     html.P(),
                     html.Div([

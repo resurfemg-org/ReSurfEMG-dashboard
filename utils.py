@@ -222,185 +222,146 @@ def get_graph_dict():
 def set_dict(uid, figure):
     graph_dict_raw[uid] = figure
 
-# get auto generated layout for processing steps
-def get_processing_step_layout(item_id, method, fs=2048):
-    layout = []
-    cols = []
+def format_option(option):
+    if isinstance(option, str):
+        replacements = {
+            "_samples": " (samples)", "_s": " (samples)",
+            "hp_cf": "High pass cut-off", "lp_cf": "Low pass cut-off",
+            "_": " ",
+        }
+        for old, new in replacements.items():
+            option = option.replace(old, new)
+        option = option.capitalize()
+        all_caps_words = ['emg', 'ecg', 'rms', 'arv']
+        for word in all_caps_words:
+            option = option.replace(word, word.upper())
+            option = option.replace(word.capitalize(), word.upper())
+        return option
+    if isinstance(option, int):
+        return str(option)
+    if isinstance(option, float):
+        return "{:.1f}".format(option)
+    return option
 
-    options = get_defaults(method, fs) or processing_methods[method] 
+# get auto generated layout for processing steps
+def get_processing_step_layout(card_id, method, fs=2048):
+    layout = []
+    options = get_defaults(method, fs) or processing_methods[method]
+
     for option in options['arg_defaults']:
+        option_id = {"type": "processing-step-" + option,
+                     "index": card_id['index']}
         var_options = {}
         if isinstance(options['arg_options'][option], tuple):
             var_options.update({k: v for k, v in zip(
                 ['min', 'max', 'step'],
                 options['arg_options'][option]) if v is not None})
-            cols.append(
-            dbc.Col([
-                html.P(option.replace("_", " ").capitalize()),
-                dcc.Input(
-                    id=item_id,
-                    name=option,
-                    type="number",
-                    value=options['arg_defaults'][option],
-                    placeholder=option.replace("_", " ").capitalize(),
-                    min=var_options.get('min', None),
-                    max=var_options.get('max', None),
-                    step=var_options.get('step', None),
-                )]))
+            layout.append(
+                dbc.Col([
+                    html.P(format_option(option)),
+                    dcc.Input(
+                        id=option_id,
+                        name=option,
+                        type="number",
+                        value=options['arg_defaults'][option],
+                        placeholder=option.replace("_", " ").capitalize(),
+                        min=var_options.get('min', None),
+                        max=var_options.get('max', None),
+                        step=var_options.get('step', None),
+                        style={"width": "100%"}
+                    )
+                ])
+            )
         elif isinstance(options['arg_options'][option], dict):
             var_options = {
                 'options': options['arg_options'][option]
             }
-            cols.append(
+            layout.append(
                 dbc.Col([
-                    html.P(option.replace("_", " ").capitalize()),
+                    html.P(format_option(option)),
                     dbc.Select(
-                        id=item_id,
+                        id=option_id,
                         name=option,
                         options=[
-                            {"label": value.replace("_", " ").capitalize(),
+                            {"label": format_option(value),
                              "value": key} for key, value 
                              in var_options['options'].items()
                         ],
-                        value=options['arg_defaults'][option]
-                        )]))
-        
-    layout = [dbc.Row(cols)]
-    return layout
-
-# get the layout for the band pass filter card
-def get_band_pass_layout(id_low, id_high, low_value=3, high_value=450):
-    layout = [
-        dbc.Row([
-            dbc.Col([
-                html.P("Low cut fs"),
-                dcc.Input(
-                    id=id_low,
-                    type="number",
-                    placeholder="low cut",
-                    value=low_value
-                )
-            ]),
-            dbc.Col([
-                html.P("High cut fs"),
-                dcc.Input(
-                    id=id_high,
-                    type="number",
-                    placeholder="high cut",
-                    value=high_value
-                )
-            ])
-        ])
-    ]
-
-    return layout
-
-
-# get the layout for the high pass filter card
-def get_high_pass_layout(id_low, cut_fs=3):
-    layout = [
-        dbc.Col([
-            html.P("Low cut fs"),
-            dcc.Input(
-                id=id_low,
-                type="number",
-                placeholder="low cut",
-                value=cut_fs
+                        value=options['arg_defaults'][option],
+                        style={"width": "100%"}
+                    )
+                ])
             )
-        ])
-    ]
-
-    return layout
-
-
-# get the layout for the low pass filter card
-def get_low_pass_layout(id_low, cut_fs=450):
-    layout = [
-        dbc.Col([
-            html.P("High cut fs"),
-            dcc.Input(
-                id=id_low,
-                type="number",
-                placeholder="high cut",
-                value=cut_fs
-            )
-        ])
-    ]
-
-    return layout
-
-
-# get the layout for the ecg removal filter card
-def get_ecg_removal_layout(id_removal, value=definitions.default_ecg_removal_value):
-    if 'index' in id_removal:
-        id_removal_index = id_removal['index']
-    else:
-        id_removal_index = "0"
-
-    layout = html.Div([dbc.Label("ECG removal method"),
-                       dbc.Select(
-                           id=id_removal,
-                           options=[
-                               {"label": "Gating", "value": EcgRemovalMethods.GATING.value},
-                               {"label": "None", "value": EcgRemovalMethods.NONE.value},
-                           ],
-                           value=value
-                       )],
-                      id={"type": "ecg-removal-card", "index": id_removal_index}
-                      )
 
     return layout
 
 
 # get the layout fot the new processing step card
-def get_new_step_body(index, selected_value="0", core_body=None):
+def get_new_step_body(index, default=False, core_body=None, method=None,
+                      settings=None):
     if core_body is None:
         core_body = []
     methods = get_defaults()
+    if default:
+        header = dbc.Col(
+            dbc.Select(
+                id={"type": "additional-step-type",
+                    "index": str(index)},
+                options=[
+                    {"label": format_option(key), "value": key}
+                    for key in methods
+                ],
+                value=method,
+                placeholder="Step type",
+                style={'width': '100%'},
+                disabled=True
+            ),
+            width=10
+        )
+    else:
+        header = dbc.Col(
+            dbc.Select(
+                id={"type": "additional-step-type",
+                    "index": str(index)},
+                options=[
+                    {"label": format_option(key), "value": key}
+                    for key in methods
+                ],
+                value=method,
+                placeholder="Step type",
+                style={'width': '100%'}
+            ),
+            width=10
+        )
+    
     new_card = dbc.Card([
         dbc.CardHeader([
-            html.Button(
-                html.I(className="fas fa-times", style={'color': 'red'}),
-                className="ml-auto close",
-                id={"type": "step-close-button", "index": str(index)},
-                style={'border': 'none',
-                       'background': 'transparent'}
-            ),
-            dbc.Label("Additional step")
+            dbc.Row([
+                header,
+                dbc.Col(
+                    html.Button(
+                        html.I(className="fas fa-times", style={'color': 'red'}),
+                        className="ml-auto close",
+                        id={"type": "step-close-button", "index": str(index)},
+                        style={
+                            'border': 'none',
+                            'background': 'transparent',
+                            'padding': '5px'
+                        }
+                    ),
+                    width=2
+                )
+            ]),
         ]),
-        dbc.Label("Step type"),
-        dbc.Select(
-            id={"type": "additional-step-type", "index": str(index)},
-            options=[
-                {"label": key, "value": key} for key in methods
-            ],
-            value=selected_value
-        ),
-        html.Div(core_body, id={"type": "additional-step-core", "index": str(index)})
-    ],
-        id={"type": "additional-step-card", "index": str(index)})
+        dbc.CardBody([
+            dbc.Row([
+                html.Div(core_body, id={"type": "additional-step-core",
+                                        "index": str(index)})
+            ]),
+        ]),
+    ], id={"type": "additional-step-card", "index": str(index)})
 
     return new_card
-
-
-def add_gating_method_options(index):
-    layout = [
-        html.Div([
-            dbc.Label("Gating method"),
-            dbc.Select(
-                id={"type": "gating-method-type", "index": str(index)},
-                options=[
-                    {"label": "Zero Fill", "value": GatingMethod.ZERO_FILL.value},
-                    {"label": "Interpolate", "value": GatingMethod.INTERPOLATE.value},
-                    {"label": "Avg. Prior Segment", "value": GatingMethod.AVERAGE_PRIOR_SEGMENT.value},
-                    {"label": "Running Avg. RMS", "value": GatingMethod.RUNNING_AVERAGE_RMS.value},
-                ],
-                value="3"
-            )
-        ],
-            id={"type": "gating-method-div", "index": str(index)})
-    ]
-    return layout
 
 
 # get the index of the dict containing the key-value
@@ -412,95 +373,95 @@ def get_idx_dict_list(dict_list, key, value):
     return idx
 
 
-# build the json containing the params for the cutter
-def build_cutter_params_json(step_number: int, percentage: int, tolerance: int):
-    data = {
-        'step_number': step_number,
-        'step_type': ProcessTypology.CUT.name,
-        'percentage': percentage,
-        'tolerance': tolerance
-    }
+# # build the json containing the params for the cutter
+# def build_cutter_params_json(step_number: int, percentage: int, tolerance: int):
+#     data = {
+#         'step_number': step_number,
+#         'step_type': ProcessTypology.CUT.name,
+#         'percentage': percentage,
+#         'tolerance': tolerance
+#     }
 
-    return data
-
-
-# build the json containing the params for the band pass filter
-def build_bandpass_params_json(step_number: int, low_fs: int, high_fs: int):
-    data = {
-        'step_number': step_number,
-        'step_type': ProcessTypology.BAND_PASS.name,
-        'low_fs': low_fs,
-        'high_fs': high_fs
-    }
-
-    return data
+#     return data
 
 
-# build the json containing the params for the high pass filter
-def build_highpass_params_json(step_number: int, cut_fs: int):
-    data = {
-        'step_number': step_number,
-        'step_type': ProcessTypology.HIGH_PASS.name,
-        'cut_fs': cut_fs
-    }
+# # build the json containing the params for the band pass filter
+# def build_bandpass_params_json(step_number: int, low_fs: int, high_fs: int):
+#     data = {
+#         'step_number': step_number,
+#         'step_type': ProcessTypology.BAND_PASS.name,
+#         'low_fs': low_fs,
+#         'high_fs': high_fs
+#     }
 
-    return data
-
-
-# build the json containing the params for the low pass filter
-def build_lowpass_params_json(step_number: int, cut_fs: int):
-    data = {
-        'step_number': step_number,
-        'step_type': ProcessTypology.LOW_PASS.name,
-        'cut_fs': cut_fs
-    }
-
-    return data
+#     return data
 
 
-# build the json containing the params for the ecg removal
-def build_ecgfilt_params_json(step_number: int, method: EcgRemovalMethods, gating_method: GatingMethod = None):
-    data = {
-        'step_number': step_number,
-        'step_type': ProcessTypology.ECG_REMOVAL.name,
-        'method': method.name
-    }
+# # build the json containing the params for the high pass filter
+# def build_highpass_params_json(step_number: int, cut_fs: int):
+#     data = {
+#         'step_number': step_number,
+#         'step_type': ProcessTypology.HIGH_PASS.name,
+#         'cut_fs': cut_fs
+#     }
 
-    if gating_method is not None:
-        data['gating_method'] = gating_method.name
-
-    return data
+#     return data
 
 
-# build the json containing the params for the envelope extraction
-def build_envelope_params_json(step_number: int, method: EnvelopeMethod):
-    data = {
-        'step_number': step_number,
-        'step_type': ProcessTypology.ENVELOPE.name,
-        'method': method.name
-    }
+# # build the json containing the params for the low pass filter
+# def build_lowpass_params_json(step_number: int, cut_fs: int):
+#     data = {
+#         'step_number': step_number,
+#         'step_type': ProcessTypology.LOW_PASS.name,
+#         'cut_fs': cut_fs
+#     }
 
-    return data
-
-
-def get_ecg_removal_value(method_name):
-    ecg_removal_value = 0
-
-    for ecg_method in EcgRemovalMethods:
-        if method_name == ecg_method.name:
-            ecg_removal_value = ecg_method.value
-
-    return ecg_removal_value
+#     return data
 
 
-def get_envelope_method_value(method_name):
-    envelope_value = 0
+# # build the json containing the params for the ecg removal
+# def build_ecgfilt_params_json(step_number: int, method: EcgRemovalMethods, gating_method: GatingMethod = None):
+#     data = {
+#         'step_number': step_number,
+#         'step_type': ProcessTypology.ECG_REMOVAL.name,
+#         'method': method.name
+#     }
 
-    for envelope_method in EnvelopeMethod:
-        if method_name == envelope_method.name:
-            envelope_value = envelope_method.value
+#     if gating_method is not None:
+#         data['gating_method'] = gating_method.name
 
-    return envelope_value
+#     return data
+
+
+# # build the json containing the params for the envelope extraction
+# def build_envelope_params_json(step_number: int, method: EnvelopeMethod):
+#     data = {
+#         'step_number': step_number,
+#         'step_type': ProcessTypology.ENVELOPE.name,
+#         'method': method.name
+#     }
+
+#     return data
+
+
+# def get_ecg_removal_value(method_name):
+#     ecg_removal_value = 0
+
+#     for ecg_method in EcgRemovalMethods:
+#         if method_name == ecg_method.name:
+#             ecg_removal_value = ecg_method.value
+
+#     return ecg_removal_value
+
+
+# def get_envelope_method_value(method_name):
+#     envelope_value = 0
+
+#     for envelope_method in EnvelopeMethod:
+#         if method_name == envelope_method.name:
+#             envelope_value = envelope_method.value
+
+#     return envelope_value
 
 
 def param_file_to_json(param_file):
@@ -520,25 +481,28 @@ def upload_additional_steps(params_file):
     for steps_index in range(5, len(data) - 1):
         step_type = data[steps_index]['step_type']
         card_counter_local += 1
-        if step_type == ProcessTypology.BAND_PASS.name:
-            new_card = get_band_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
-                                            {"type": "additional-step-high", "index": str(card_counter_local)},
-                                            data[steps_index]['low_fs'],
-                                            data[steps_index]['high_fs'])
-            list_value = ProcessTypology.BAND_PASS.value
-        elif step_type == ProcessTypology.HIGH_PASS.name:
-            new_card = get_high_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
-                                            data[steps_index]['cut_fs'])
-            list_value = ProcessTypology.HIGH_PASS.value
-        elif step_type == ProcessTypology.LOW_PASS.name:
-            new_card = get_high_pass_layout({"type": "additional-step-high", "index": str(card_counter_local)},
-                                            data[steps_index]['cut_fs'])
-            list_value = ProcessTypology.LOW_PASS.value
-        elif step_type == ProcessTypology.ECG_REMOVAL.name:
-            ecg_removal_value = get_ecg_removal_value(data[steps_index]['method'])
-            new_card = get_ecg_removal_layout({"type": "additional-step-removal", "index": str(card_counter_local)},
-                                              data[steps_index]['method'])
-            list_value = ProcessTypology.ECG_REMOVAL.value
+        # if step_type == ProcessTypology.BAND_PASS.name:
+        #     new_card = get_band_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
+        #                                     {"type": "additional-step-high", "index": str(card_counter_local)},
+        #                                     data[steps_index]['low_fs'],
+        #                                     data[steps_index]['high_fs'])
+        #     list_value = ProcessTypology.BAND_PASS.value
+        # elif step_type == ProcessTypology.HIGH_PASS.name:
+        #     new_card = get_high_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
+        #                                     data[steps_index]['cut_fs'])
+        #     list_value = ProcessTypology.HIGH_PASS.value
+        # elif step_type == ProcessTypology.LOW_PASS.name:
+        #     new_card = get_high_pass_layout({"type": "additional-step-high", "index": str(card_counter_local)},
+        #                                     data[steps_index]['cut_fs'])
+        #     list_value = ProcessTypology.LOW_PASS.value
+        # elif step_type == ProcessTypology.ECG_REMOVAL.name:
+        #     ecg_removal_value = get_ecg_removal_value(data[steps_index]['method'])
+        #     new_card = get_ecg_removal_layout({"type": "additional-step-removal", "index": str(card_counter_local)},
+        #                                       data[steps_index]['method'])
+        #     list_value = ProcessTypology.ECG_REMOVAL.value
+        new_card = get_new_step_body({"type": "additional-step-removal",
+                                      "index": str(card_counter_local)},
+                                      default=False)
 
         steps_body = get_new_step_body(card_counter_local, list_value, new_card)
         core_body = core_body + [steps_body, html.P()]
