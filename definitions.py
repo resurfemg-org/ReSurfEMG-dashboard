@@ -161,6 +161,16 @@ def get_defaults(method=None, fs=2048):
                 'ecg_peakset_name': 'ecg'},
             'omit_args': [],
             },
+        'envelope': {
+            'arg_defaults': {
+                'env_window': int(0.1*fs),
+                'env_type': 'rms'},
+            'arg_options': {
+                'env_window': (1, None, 1),
+                'env_type': ['rms', 'arv']},
+            'set_args': {},
+            'omit_args': ['ci_alpha']
+            },
         'baseline': {
             'arg_defaults': {
                 'percentile': 33,
@@ -181,8 +191,19 @@ def get_defaults(method=None, fs=2048):
                 'ma_window'],
             },
     }
-    return override_defaults.get(method, None) or override_defaults
+    if method is None:
+        return override_defaults
+    return override_defaults.get(method, None)
 
+def get_default_pipeline(fs_emg=20248):
+    # default pipeline for EMG processing
+    default_pipeline = {
+        'filter_emg': get_defaults('filter_emg', fs=fs_emg),
+        'gating': get_defaults('gating', fs=fs_emg),
+        'envelope': get_defaults('envelope', fs=fs_emg),
+        'baseline': get_defaults('baseline', fs=fs_emg),
+    }
+    return default_pipeline
 
 # Function: envelope
 #   Args and Defaults: {'env_window': None, 'env_type': None, 'ci_alpha': None}

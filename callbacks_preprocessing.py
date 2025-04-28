@@ -36,35 +36,37 @@ def show_raw_data(data):
 @callback(Output('preprocessing-processed-container', 'children'),
           Output('download-data-btn', 'disabled'),
           Input('apply-pipeline-btn', 'n_clicks'),
-          State('base-filter-low', 'value'),
-          State('base-filter-high', 'value'),
-          State({"type": "ecg-filter-select", "index": "0"}, "value"),
-          State('envelope-extraction-select', 'value'),
+        #   State('base-filter-low', 'value'),
+        #   State('base-filter-high', 'value'),
+        #   State({"type": "ecg-filter-select", "index": "0"}, "value"),
+        #   State('envelope-extraction-select', 'value'),
           State({"type": "additional-step-core", "index": ALL}, "id"),
           State({"type": "additional-step-type", "index": ALL}, "value"),
-          State({"type": "additional-step-low", "index": ALL}, "value"),
-          State({"type": "additional-step-low", "index": ALL}, "id"),
-          State({"type": "additional-step-high", "index": ALL}, "value"),
-          State({"type": "additional-step-high", "index": ALL}, "id"),
-          State({"type": "ecg-filter-select", "index": ALL}, "value"),
-          State({"type": "ecg-filter-select", "index": ALL}, "id"),
-          State({"type": "gating-method-type", "index": ALL}, "value"),
-          State({"type": "gating-method-type", "index": ALL}, "id"))
+        #   State({"type": "additional-step-low", "index": ALL}, "value"),
+        #   State({"type": "additional-step-low", "index": ALL}, "id"),
+        #   State({"type": "additional-step-high", "index": ALL}, "value"),
+        #   State({"type": "additional-step-high", "index": ALL}, "id"),
+        #   State({"type": "ecg-filter-select", "index": ALL}, "value"),
+        #   State({"type": "ecg-filter-select", "index": ALL}, "id"),
+        #   State({"type": "gating-method-type", "index": ALL}, "value"),
+        #   State({"type": "gating-method-type", "index": ALL}, "id")
+        )
 def show_data(click,
-              low_freq,
-              high_freq_default,
-              ecg_method,
-              envelope_method,
+            #   low_freq,
+            #   high_freq_default,
+            #   ecg_method,
+            #   envelope_method,
               additional_card,
               additional_steps,
-              additional_low,
-              additional_low_idx,
-              additional_high,
-              additional_high_idx,
-              additional_rem,
-              additional_rem_idx,
-              gating_method,
-              gating_method_idx):
+            #   additional_low,
+            #   additional_low_idx,
+            #   additional_high,
+            #   additional_high_idx,
+            #   additional_rem,
+            #   additional_rem_idx,
+            #   gating_method,
+            #   gating_method_idx
+              ):
     # variables initialization
     global json_parameters
 
@@ -77,8 +79,8 @@ def show_data(click,
     emg_timeseries = variables.get_emg_timeseries()
     fs = variables.get_emg_freq()
 
-    # we have to make sure that the cut-off frequencies are in an acceptable range
-    high_freq = utils.check_default_cut_fs(high_freq_default, fs)
+    # # we have to make sure that the cut-off frequencies are in an acceptable range
+    # high_freq = utils.check_default_cut_fs(high_freq_default, fs)
 
     # if data have been loaded, apply the processing
     if emg_data is not None:
@@ -94,8 +96,8 @@ def show_data(click,
         #                                                   low_freq,
         #                                                   high_freq,
         #                                                   fs)
-        json_parameters.append(utils.build_bandpass_params_json(
-            2, low_freq, high_freq))
+        # json_parameters.append(utils.build_bandpass_params_json(
+        #     2, low_freq, high_freq))
 
         # remove ECG
         # TODO: add the ECG removal gating method to the json file
@@ -205,8 +207,8 @@ def show_data(click,
         emg_timeseries.run('envelope')
         
         emg_env = np.array([ts.y_env for ts in emg_timeseries])
-        json_parameters.append(utils.build_envelope_params_json(
-            len(json_parameters) + 1, EnvelopeMethod(envelope_method)))
+        # json_parameters.append(utils.build_envelope_params_json(
+        #     len(json_parameters) + 1, EnvelopeMethod(envelope_method)))
 
         # store the processed signal
         variables.set_emg_processed(emg_env)
@@ -287,7 +289,13 @@ def add_step(click, close, confirm_upload, confirm_reset, params_file, previous_
     # if the page is reloaded the steps are reset
     if id_ctx is None:
         card_counter = 0
-        return []
+        default_cards = []
+        for i, method in enumerate(definitions.get_default_pipeline()):
+            default_cards.append(
+                utils.get_new_step_body(i, default=True, method=method))
+            default_cards.append(html.P())
+            card_counter += 1
+        return default_cards
     # if the add steps button is clicked add the card
     elif id_ctx == 'add-steps-btn':
         card_counter += 1
@@ -327,25 +335,12 @@ def add_step(click, close, confirm_upload, confirm_reset, params_file, previous_
 @callback(Output({"type": "additional-step-core", "index": MATCH}, "children"),
           Input({"type": "additional-step-type", "index": MATCH}, "value"),
           State({"type": "additional-step-core", "index": MATCH}, "id"),
-          prevent_initial_call=True)
+          )
 def get_body(selected_value, card_id):
-    # new_section = []
-    new_section = utils.get_processing_step_layout(card_id, selected_value)
-    # if selected_value == ProcessTypology.BAND_PASS.value:
-    #     # new_section = utils.get_band_pass_layout({"type": "additional-step-low", "index": card_id['index']},
-    #     #                                          {"type": "additional-step-high", "index": card_id['index']})
-    #     new_section = utils.get_processing_step_layout(card_id, 'filter_emg')
-    #     # print(new_section)
-    #     # print()
-    #     # print(test)
-    # elif selected_value == ProcessTypology.HIGH_PASS.value:
-    #     new_section = utils.get_high_pass_layout({"type": "additional-step-low", "index": card_id['index']})
-    # elif selected_value == ProcessTypology.LOW_PASS.value:
-    #     new_section = utils.get_low_pass_layout({"type": "additional-step-high", "index": card_id['index']})
-    # elif selected_value == ProcessTypology.ECG_REMOVAL.value:
-    #     new_section = utils.get_ecg_removal_layout({"type": "ecg-filter-select", "index": card_id['index']})
-
-    return new_section
+    if selected_value in definitions.get_defaults():
+        new_section = utils.get_processing_step_layout(card_id, selected_value)
+        return new_section
+    return []
 
 
 # download the json file with the processing params and the processed emg
@@ -416,59 +411,60 @@ def populate_steps(reset_button):
     return open_confirmation
 
 
-# the user confirms the params upload or the reset button is pressed
-@callback(Output('tail-cut-percent', 'value'),
-          Output('tail-cut-tolerance', 'value'),
-          Output('base-filter-low', 'value'),
-          Output('base-filter-high', 'value'),
-          Output({"type": "ecg-filter-select", "index": "0"}, 'value'),
-          Output('envelope-extraction-select', 'value'),
-          Input('confirm-upload', 'submit_n_clicks'),
-          Input('confirm-reset', 'submit_n_clicks'),
-          State('upload-processing-params', 'contents'),
-          prevent_initial_call=True)
-def populate_steps(confirm_upload, confirm_reset, params_file):
-    trigger_id = ctx.triggered_id
+# # the user confirms the params upload or the reset button is pressed
+# @callback(
+#         # Output('tail-cut-percent', 'value'),
+#         # Output('tail-cut-tolerance', 'value'),
+#         # Output('base-filter-low', 'value'),
+#         # Output('base-filter-high', 'value'),
+#         # Output({"type": "ecg-filter-select", "index": "0"}, 'value'),
+#         # Output('envelope-extraction-select', 'value'),
+#         Input('confirm-upload', 'submit_n_clicks'),
+#         Input('confirm-reset', 'submit_n_clicks'),
+#         State('upload-processing-params', 'contents'),
+#         prevent_initial_call=True)
+# def populate_steps(confirm_upload, confirm_reset, params_file):
+#     trigger_id = ctx.triggered_id
 
-    if (trigger_id == 'confirm-reset' and confirm_reset) or trigger_id is None:
-        bandpass_low = definitions.default_bandpass_low
-        bandpass_high = utils.check_default_cut_fs(definitions.default_bandpass_high,
-                                                          variables.get_emg_freq())
-        first_cut_percentage = definitions.default_first_cut_percentage
-        first_cut_tolerance = definitions.default_first_cut_tolerance
-        ecg_removal_value = definitions.default_ecg_removal_value
-        envelope_value = definitions.default_envelope_value
+#     if (trigger_id == 'confirm-reset' and confirm_reset) or trigger_id is None:
+#         bandpass_low = definitions.default_bandpass_low
+#         bandpass_high = utils.check_default_cut_fs(definitions.default_bandpass_high,
+#                                                           variables.get_emg_freq())
+#         first_cut_percentage = definitions.default_first_cut_percentage
+#         first_cut_tolerance = definitions.default_first_cut_tolerance
+#         ecg_removal_value = definitions.default_ecg_removal_value
+#         envelope_value = definitions.default_envelope_value
 
-    if trigger_id == 'confirm-upload' and confirm_upload:
-        data = utils.param_file_to_json(params_file)
+#     if trigger_id == 'confirm-upload' and confirm_upload:
+#         data = utils.param_file_to_json(params_file)
 
-        first_cut_percentage = data[1]['percentage']
-        first_cut_tolerance = data[1]['tolerance']
-        bandpass_low = data[2]['low_fs']
-        bandpass_high = data[2]['high_fs']
+#         first_cut_percentage = data[1]['percentage']
+#         first_cut_tolerance = data[1]['tolerance']
+#         bandpass_low = data[2]['low_fs']
+#         bandpass_high = data[2]['high_fs']
 
-        ecg_removal = data[4]['method']
-        ecg_removal_value = utils.get_ecg_removal_value(ecg_removal)
+#         ecg_removal = data[4]['method']
+#         ecg_removal_value = utils.get_ecg_removal_value(ecg_removal)
 
-        envelope = data[-1]['method']
-        envelope_value = utils.get_envelope_method_value(envelope)
+#         envelope = data[-1]['method']
+#         envelope_value = utils.get_envelope_method_value(envelope)
 
-    if confirm_reset or confirm_upload or trigger_id is None:
-        return first_cut_percentage, first_cut_tolerance, bandpass_low, bandpass_high, ecg_removal_value, envelope_value
+#     if confirm_reset or confirm_upload or trigger_id is None:
+#         return first_cut_percentage, first_cut_tolerance, bandpass_low, bandpass_high, ecg_removal_value, envelope_value
 
 
-# populate the options on the base of the selected processing type
-@callback(Output({"type": "ecg-removal-card", "index": MATCH}, "children"),
-          Input({"type": "ecg-filter-select", "index": MATCH}, "value"),
-          State({"type": "ecg-removal-card", "index": MATCH}, "children"),
-          State({"type": "ecg-removal-card", "index": MATCH}, "id"),
-          prevent_initial_call=True)
-def get_body(selected_value, container, id_origin):
-    if selected_value == EcgRemovalMethods.GATING.value:
-        new_section = container + utils.add_gating_method_options(id_origin["index"])
-    else:
-        for element in container:
-            if 'id' in element['props'] and element['props']['id']['type'] == 'gating-method-div':
-                container.remove(element)
-        new_section = container
-    return new_section
+# # populate the options on the base of the selected processing type
+# @callback(Output({"type": "ecg-removal-card", "index": MATCH}, "children"),
+#           Input({"type": "ecg-filter-select", "index": MATCH}, "value"),
+#           State({"type": "ecg-removal-card", "index": MATCH}, "children"),
+#           State({"type": "ecg-removal-card", "index": MATCH}, "id"),
+#           prevent_initial_call=True)
+# def get_body(selected_value, container, id_origin):
+#     if selected_value == EcgRemovalMethods.GATING.value:
+#         new_section = container + utils.add_gating_method_options(id_origin["index"])
+#     else:
+#         for element in container:
+#             if 'id' in element['props'] and element['props']['id']['type'] == 'gating-method-div':
+#                 container.remove(element)
+#         new_section = container
+#     return new_section
