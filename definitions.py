@@ -167,7 +167,7 @@ def get_defaults(method=None, fs=2048):
                 'env_type': 'rms'},
             'arg_options': {
                 'env_window': (1, None, 1),
-                'env_type': ['rms', 'arv']},
+                'env_type': {'RMS': 'rms', 'ARV':'arv'}},
             'set_args': {},
             'omit_args': ['ci_alpha']
             },
@@ -182,7 +182,7 @@ def get_defaults(method=None, fs=2048):
                 'step_s': (1, None, 1),
             },
             'set_args': {
-                'method': 'default',
+                'base_method': 'default',
             },
             'omit_args': [
                 'perc_window',
@@ -195,7 +195,7 @@ def get_defaults(method=None, fs=2048):
         return override_defaults
     return override_defaults.get(method, None)
 
-def get_default_pipeline(fs_emg=20248):
+def get_default_pipeline(fs_emg=2048):
     # default pipeline for EMG processing
     default_pipeline = {
         'filter_emg': get_defaults('filter_emg', fs=fs_emg),
@@ -249,3 +249,8 @@ input_types = {
     str: 'text',
     bool: 'checkbox',
 }
+
+ecg_removal_methods = [
+    'gating',
+    'wavelet_denoising',
+]
