@@ -333,7 +333,6 @@ def get_new_step_body(index, default=False, core_body=None, method=None,
             ),
             width=10
         )
-    
     new_card = dbc.Card([
         dbc.CardHeader([
             dbc.Row([
