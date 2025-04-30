@@ -4,4 +4,5 @@ plotly-resampler>=0.7.2.2
 waitress>=2.1.2
 trace_updater
 ipywidgets
-git+https://github.com/ReSurfEMG/ReSurfEMG.git@main
+# git+https://github.com/ReSurfEMG/ReSurfEMG.git@main
+git+https://github.com/ReSurfEMG/ReSurfEMG.git@prepare_release_1_1_0
