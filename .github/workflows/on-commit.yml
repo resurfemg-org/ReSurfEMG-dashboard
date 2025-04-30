@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: 3.12
       - run: python3 -m venv .venv
-      - run: .venv/bin/python -m pip install wheel
+      - run: .venv/bin/python -m pip install wheel setuptools
       - run: .venv/bin/python setup.py lint
 
   
