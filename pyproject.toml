@@ -44,7 +44,8 @@ tests = ['pytest',
          'pycodestyle', 
          'isort',
          'wheel',
-         'ipywidgets']
+         'ipywidgets',
+         'setuptools']
 
 [tool.setuptools.packages.find]
 include = ["resurfemg-dashboard*"]

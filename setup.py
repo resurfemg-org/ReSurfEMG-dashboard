@@ -89,7 +89,7 @@ class TestCommand(Command):
                 self.context = super().ensure_directories(env_dir)
                 return self.context
 
-        recs = self.distribution.extras_require.get('test', [])
+        recs = self.distribution.extras_require.get('tests', [])
 
         with tf.TemporaryDirectory() as builddir:
             vbuilder = ContextVenvBuilder(with_pip=True)
