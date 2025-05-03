@@ -288,7 +288,7 @@ def get_processing_step_layout(card_id, method, fs=2048):
                         options=[
                             {"label": format_option(value),
                              "value": key} for key, value in
-                                var_options['options'].items()
+                            var_options['options'].items()
                         ],
                         value=options['arg_defaults'][option],
                         style={"width": "100%"}
