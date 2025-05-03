@@ -7,7 +7,7 @@ This file contains functions to work functions from the ReSurfEMG library.
 
 from typing import List
 
-from dash import Input, Output, callback, dcc, ctx, State, html, ALL, callback_context
+from dash import Input, Output, callback, dcc, ctx, State
 from app import app, variables
 from resurfemg.postprocessing import features as feat
 from resurfemg import helper_functions as hf
@@ -15,11 +15,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import utils
-from pathlib import Path
-from dash.exceptions import PreventUpdate
-from definitions import ComputedFeatures, BreathSelectionMethod, FEATURES_COMPUTE_BTN, FEATURES_DOWNLOAD_BTN, FEATURES_DOWNLOAD_DCC
-from definitions import (EMG_FILENAME_FEATURES, FEATURES_EMG_GRAPH, FEATURES_EMG_GRAPH_DIV,
-                         FEATURES_SELECT_LEAD, LOAD_FEATURES_DIV, FEATURES_TABLE, FEATURES_SELECT_COMPUTATION)
+from definitions import (ComputedFeatures, FEATURES_COMPUTE_BTN,
+                         FEATURES_DOWNLOAD_BTN, FEATURES_DOWNLOAD_DCC)
+from definitions import (
+    EMG_FILENAME_FEATURES, FEATURES_EMG_GRAPH, FEATURES_EMG_GRAPH_DIV,
+    FEATURES_SELECT_LEAD, LOAD_FEATURES_DIV, FEATURES_TABLE,
+    FEATURES_SELECT_COMPUTATION)
 
 features_df = None
 
@@ -44,7 +45,8 @@ class Breath:
           Input(LOAD_FEATURES_DIV, 'data'))
 def show_filename(data):
     """
-    When loading the page, the path of the file selected is displayed in th EMG_FILENAME_FEATURES
+    When loading the page, the path of the file selected is displayed in the
+    EMG_FILENAME_FEATURES
     """
     filename = variables.get_emg_filename()
 
@@ -55,12 +57,16 @@ def show_filename(data):
           Input(LOAD_FEATURES_DIV, 'data'))
 def show_filename(data):
     """
-    When loading the page, the dropdown menu for selecting the lead is populated
+    When loading the page, the dropdown menu for selecting the lead is
+    populated
     """
-    data = variables.get_emg_processed()
+    emg_ts = variables.get_emg_timeseries()
+    if emg_ts is not None:
+        data = np.array([ts['env'] for ts in emg_ts])
 
     if data is not None:
-        options = [{'label': 'Lead ' + str(n), 'value': n} for n in range(data.shape[0])]
+        options = [{'label': 'Lead ' + str(n), 'value': n}
+                   for n in range(data.shape[0])]
         return options
     return []
 
@@ -69,17 +75,19 @@ def show_filename(data):
           Input(FEATURES_SELECT_LEAD, 'value'))
 def show_graph(value):
     """
-    When loading the page, the path of the file selected is displayed in th EMG_FILENAME_FEATURES
+    When loading the page, the path of the file selected is displayed in the
+    EMG_FILENAME_FEATURES
     """
-    data = variables.get_emg_processed()
+    emg_ts = variables.get_emg_timeseries()
+    if emg_ts is not None:
+        data = np.array([ts['env'] for ts in emg_ts])
+        if value is not None:
+            lead = data[int(value)]
+            time_array = utils.get_time_array(
+                lead.shape[0], variables.get_fs_emg())
 
-    if data is not None and value is not None:
-        lead = data[int(value)]
-        time_array = utils.get_time_array(lead.shape[0], variables.get_emg_freq())
-
-        graph = get_slider_graph(lead, time_array)
-        return graph
-
+            graph = get_slider_graph(lead, time_array)
+            return graph
     return []
 
 
@@ -93,22 +101,26 @@ def show_graph(value):
           prevent_initial_call=True)
 def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_input):
     """
-    When the slide bar is updated by the user, or the computation method is changed
-    computes the features and updates the table
+    When the slide bar is updated by the user, or the computation method is 
+    changed computes the features and updates the table
     """
 
     global features_df
 
     data = variables.get_emg_processed()
-    fs = variables.get_emg_freq()
+    fs = variables.get_fs_emg()
     time_array = utils.get_time_array(data[int(lead_n)].shape[0], fs)
 
     if slidebar_stat is not None and 'xaxis.range' in slidebar_stat:
-        start_sample = (np.abs(time_array - slidebar_stat['xaxis.range'][0])).argmin()
-        stop_sample = (np.abs(time_array - slidebar_stat['xaxis.range'][1])).argmin()
-    elif slidebar_stat is not None and ('xaxis.range[0]' and 'xaxis.range[1]' in slidebar_stat):
-        start_sample = (np.abs(time_array - slidebar_stat['xaxis.range[0]'])).argmin()
-        stop_sample = (np.abs(time_array - slidebar_stat['xaxis.range[1]'])).argmin()
+        start_sample = (
+            np.abs(time_array - slidebar_stat['xaxis.range'][0])).argmin()
+        stop_sample = (
+            np.abs(time_array - slidebar_stat['xaxis.range'][1])).argmin()
+    elif slidebar_stat is not None and 'xaxis.range[1]' in slidebar_stat:
+        start_sample = (
+            np.abs(time_array - slidebar_stat['xaxis.range[0]'])).argmin()
+        stop_sample = (
+            np.abs(time_array - slidebar_stat['xaxis.range[1]'])).argmin()
     else:
         start_sample = 0
         stop_sample = time_array.shape[0]
@@ -117,17 +129,31 @@ def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_inp
 
     features_df = create_features_dataframe(breaths, fs)
 
-    features = [{ComputedFeatures.BREATHS_COUNT: len(breaths),
-                 ComputedFeatures.MAX_AMPLITUDE: str(np.round(features_df['maxima'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
-                     np.round(features_df['maxima'].to_numpy().flatten().std(), 2)),
-                 ComputedFeatures.AUC: str(np.round(features_df['auc'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
-                     np.round(features_df['auc'].to_numpy().flatten().std(), 2)),
-                 ComputedFeatures.RISE_TIME: str(np.round(features_df['rise_time'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
-                     np.round(features_df['rise_time'].to_numpy().flatten().std(), 2)),
-                 ComputedFeatures.ACTIVITY_DURATION: str(np.round(features_df['length'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
-                     np.round(features_df['length'].to_numpy().flatten().std(), 2)),
-                 ComputedFeatures.PEAK_POSITION: str(np.round(features_df['peak_position'].to_numpy().flatten().mean(), 2)) + ' ± ' + str(
-                     np.round(features_df['peak_position'].to_numpy().flatten().std(), 2))}]
+    features = [{
+        ComputedFeatures.BREATHS_COUNT: len(breaths),
+        ComputedFeatures.MAX_AMPLITUDE: 
+            str(np.round(features_df['maxima'].to_numpy().flatten().mean(), 2))
+            + ' ± ' + str(
+            np.round(features_df['maxima'].to_numpy().flatten().std(), 2)),
+        ComputedFeatures.AUC:
+            str(np.round(features_df['auc'].to_numpy().flatten().mean(), 2))
+            + ' ± ' + str(
+            np.round(features_df['auc'].to_numpy().flatten().std(), 2)),
+        ComputedFeatures.RISE_TIME: 
+            str(np.round(
+                features_df['rise_time'].to_numpy().flatten().mean(), 2))
+            + ' ± ' + str(
+            np.round(features_df['rise_time'].to_numpy().flatten().std(), 2)),
+        ComputedFeatures.ACTIVITY_DURATION:
+            str(
+                np.round(features_df['length'].to_numpy().flatten().mean(), 2))
+            + ' ± ' + str(
+            np.round(features_df['length'].to_numpy().flatten().std(), 2)),
+        ComputedFeatures.PEAK_POSITION:
+            str(np.round(
+                features_df['peak_position'].to_numpy().flatten().mean(), 2))
+            + ' ± ' + str(np.round(
+            features_df['peak_position'].to_numpy().flatten().std(), 2))}]
 
     return features
 
@@ -146,11 +172,11 @@ def download_data(click):
 
 def get_slider_graph(emg: np.array, time: np.array):
     """
-    Produces a line plot with a range slider selector of the signal specified in the emg argument, with the
-    time basis specified in the time argument.
-        Args:
-            emg: a numpy array containing a single lead of the emg signal to plot
-            time: a numpy array containing the time basis for the emg signal
+    Produces a line plot with a range slider selector of the signal specified
+    in the emg argument, with the time basis specified in the time argument.
+    Args:
+    emg: a numpy array containing a single lead of the emg signal to plot
+    time: a numpy array containing the time basis for the emg signal
 
     """
 
@@ -189,38 +215,37 @@ def get_slider_graph(emg: np.array, time: np.array):
 def get_features_table(emg: np.array, start_sample: int, stop_sample: int):
     """
     Produces a table with the features computed over the selected signal.
-        Args:
-            emg: a numpy array containing a single lead of the emg signal to plot
-            start_sample: number of the sample where the signal to be computed starts
-            stop_sample: number of the sample where the signal to be computed stops
+    Args:
+    emg: a numpy array containing a single lead of the emg signal to plot
+    start_sample: number of the sample where the signal to be computed starts
+    stop_sample: number of the sample where the signal to be computed stops
 
     """
 
     return []
 
 
-def get_breaths(n_channel: int, start_sample: int, stop_sample: int, method: str) -> List[Breath]:
+def get_breaths(n_channel, start_sample, stop_sample, method):
     """
     Produces a list of breaths from the time window in the signal.
-        Args:
-            emg: a numpy array containing a single lead of the emg signal to analyse
-            start_sample: number of the sample where the signal to be computed starts
-            stop_sample: number of the sample where the signal to be computed stops
-            method: the method used to compute the breaths
-
+    Args:
+    emg: a numpy array containing a single lead of the emg signal to analyse
+    start_sample: number of the sample where the signal to be computed starts
+    stop_sample: number of the sample where the signal to be computed stops
+    method: the method used to compute the breaths
     """
     emg_timeseries = variables.get_emg_timeseries()
-    emg = emg_timeseries[n_channel].y_env
-    
+    emg = emg_timeseries[n_channel]['env']
+
     # TODO: Introduce different methods for breath detection
     emg_timeseries[n_channel].baseline()
     emg_timeseries[n_channel].detect_emg_breaths()
     emg_timeseries[n_channel].peaks['breaths'].detect_on_offset(
-        baseline=emg_timeseries[n_channel].y_baseline
+        baseline=emg_timeseries[n_channel]['baseline']
     )
-    baseline = emg_timeseries[n_channel].y_baseline
+    baseline = emg_timeseries[n_channel]['baseline']
     emg_timeseries[n_channel].calculate_time_products(
-        peak_set_name='breaths') 
+        peak_set_name='breaths')
     emg_timeseries[n_channel].test_emg_quality(peak_set_name='breaths')
     emg_timeseries[n_channel].peaks['breaths'].sanitize()
     peak_df = emg_timeseries[n_channel].peaks['breaths'].peak_df
@@ -232,70 +257,6 @@ def get_breaths(n_channel: int, start_sample: int, stop_sample: int, method: str
                       baseline=baseline[
                           int(row['start_idx']):int(row['end_idx'])])
                for _, row in peak_df.iterrows()]
-    
-
-    # if method == BreathSelectionMethod.LOG_REMAPPING.value:
-    #     index_hold = []
-    #     for slice in slice_iterator(big_list, slice_length):
-    #         entropy_index = hf.entropical(slice)
-    #         index_hold.append(entropy_index)
-
-    #     high_decision_cutoff = 0.9 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-    #     decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-
-    #     rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
-
-    # elif method == BreathSelectionMethod.VARIABILITY.value:
-    #     variability = hf.variability_maker(big_list, segment_size=slice_length, method='variance', fill_method='avg')
-    #     high_decision_cutoff = 0.5 * ((np.max(variability)) - (np.min(variability))) + np.min(variability)
-    #     decision_cutoff = 0.05 * ((np.max(variability)) - (np.min(variability))) + np.min(variability)
-        
-    #     rms_rolled = hf.vect_naive_rolling_rms(variability, 100)  # so rms is rms variability
-
-    # elif method == BreathSelectionMethod.SHANNON_ENTROPY.value:
-    #     index_hold = []
-    #     for slice in slice_iterator(big_list, slice_length):
-    #         entropy_index = hf.entropy_maker(slice, method='scipy')
-    #         index_hold.append(entropy_index)
-
-    #     high_decision_cutoff = 0.9 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-    #     decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-
-    #     rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
-
-    # elif method == BreathSelectionMethod.SAMPLE_ENTROPY.value:
-
-    #     # N.B. the window length is an empirical tradeoff between speed and quality of the results.
-    #     # It is not what is recommended in the literature
-    #     slice_length = 300
-    #     tolerance = 0.3 * np.std(big_list)
-    #     index_hold = []
-    #     for slice in slice_iterator(big_list, slice_length):
-    #         entropy_index = hf.sampen_optimized(slice, tolerance=tolerance)
-    #         index_hold.append(entropy_index)
-
-    #     # N.B. the cutoffs have still to be evaluated!
-    #     high_decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-    #     decision_cutoff = 0.5 * ((np.max(index_hold)) - (np.min(index_hold))) + np.min(index_hold)
-
-    #     rms_rolled = hf.vect_naive_rolling_rms(index_hold, 100)  # so rms is rms entropy
-
-    # hi = np.array(hf.zero_one_for_jumps_base(rms_rolled, high_decision_cutoff))
-    # lo = np.array(hf.zero_one_for_jumps_base(rms_rolled, decision_cutoff))
-
-    # rhi = hf.ranges_of(hi)
-    # rlo = hf.ranges_of(lo)
-
-    # keep = hf.intersections(rlo, rhi)
-
-    # seven_line = np.zeros(len(rms_rolled))
-    # for seven_range in keep:
-    #     seven_line[seven_range.to_slice()] = 7
-
-    # breaths = [Breath(start_sample=int(keep[i].start+start_sample),
-    #                 stop_sample=int(keep[i + 1].start+start_sample),
-    #                 amplitude=emg[int(keep[i].start+start_sample):int(keep[i + 1].start+start_sample)])
-    #         for i, element in enumerate(keep[:-1])]
 
     return breaths
 
@@ -336,7 +297,7 @@ def get_breaths_auc(breaths: List[Breath]) -> List[float]:
             breaths: list of the breaths
 
     """
-    sampling_rate = variables.get_emg_freq()
+    sampling_rate = variables.get_fs_emg()
     auc = [feat.time_product(
         breath.amplitude,
         fs=sampling_rate,
@@ -348,9 +309,9 @@ def get_breaths_auc(breaths: List[Breath]) -> List[float]:
     return auc
 
 
-def get_breaths_rise_time(breaths: List[Breath], sampling_fs: int) -> List[float]:
+def get_breaths_rise_time(breaths, sampling_fs):
     """
-    Computes and returns the numpy array containing the rise time in milliseconds
+    Computes and returns the numpy array containing the rise time in ms
     of each breath of the breaths list
         Args:
             breaths: list of the breaths
@@ -388,7 +349,7 @@ def get_breaths_peak_position(breaths: List[Breath]) -> List[float]:
     return rise_times
 
 
-def create_features_dataframe(breaths: List[Breath], sampling_fs: int) -> pd.DataFrame:
+def create_features_dataframe(breaths: List[Breath], sampling_fs: int):
     """
     creates the pandas dataframe containing all the computed features
         Args:

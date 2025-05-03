@@ -16,7 +16,6 @@ import numpy as np
           Output('emg-filename', 'children'),
           Input('emg-delete-button', 'n_clicks'))
 def show_raw_data(delete):
-    emg_data = variables.get_emg()
     emg_timeseries = variables.get_emg_timeseries()
     hidden = True
 
@@ -24,16 +23,15 @@ def show_raw_data(delete):
     filename = variables.get_emg_filename()
 
     if trigger_id == 'emg-delete-button':
-        variables.set_emg(None)
         variables.set_emg_filename(None)
         variables.set_emg_timeseries(None)
         children_emg = []
     else:
-        if emg_data is not None:
-            emg_fs = variables.get_emg_freq()
+        if emg_timeseries is not None:
+            emg_fs = variables.get_fs_emg()
             plot_data, plot_info = utils.update_plot_data(
-                new_data=emg_data,
-                new_info={'signal':'Raw', 'color':'blue', 'secondary':False, 
+                new_data=np.array([ts['raw'] for ts in emg_timeseries]),
+                new_info={'signal': 'Raw', 'color': 'blue', 'secondary': False,
                           'visible': True}
             )
             titles = [ts.label or 'Channel' for ts in emg_timeseries]
@@ -52,7 +50,6 @@ def show_raw_data(delete):
           Output('ventilator-filename', 'children'),
           Input('ventilator-delete-button', 'n_clicks'))
 def show_raw_data(delete):
-    ventilator_data = variables.get_ventilator()
     vent_timeseries = variables.get_vent_timeseries()
     hidden = True
 
@@ -60,16 +57,15 @@ def show_raw_data(delete):
     filename = variables.get_ventilator_filename()
 
     if trigger_id == 'ventilator-delete-button':
-        variables.set_ventilator(None)
         variables.set_ventilator_filename(None)
         variables.set_vent_timeseries(None)
         children_vent = []
     else:
-        if ventilator_data is not None:
-            fs_vent = variables.get_ventilator_freq()
+        if vent_timeseries is not None:
+            fs_vent = variables.get_fs_vent()
             plot_data, plot_info = utils.update_plot_data(
-                new_data=ventilator_data,
-                new_info={'signal':'Raw', 'color':'blue', 'secondary':False,
+                new_data=np.array([ts['raw'] for ts in vent_timeseries]),
+                new_info={'signal': 'Raw', 'color': 'blue', 'secondary': False,
                           'visible': True}
             )
             titles = [ts.label or 'Channel' for ts in vent_timeseries]

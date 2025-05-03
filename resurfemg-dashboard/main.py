@@ -4,7 +4,6 @@ from threading import Timer  # For waiting before launching web page
 from waitress import serve
 
 
-
 def open_browser():
     """
     Open browser to localhost

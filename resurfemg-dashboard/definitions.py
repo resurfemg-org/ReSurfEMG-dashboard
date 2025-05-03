@@ -43,7 +43,7 @@ class BreathSelectionMethod(Enum):
 
 
 # default values for preprocessing
-sampling_freq = variables.get_emg_freq()
+sampling_freq = variables.get_fs_emg()
 default_bandpass_low = 3
 default_bandpass_high = 450
 default_first_cut_percentage = 3
@@ -118,6 +118,7 @@ f_list = inspect.getmembers(TimeSeries, predicate=inspect.isfunction)
 f_names = [name for name, _ in f_list if not name.startswith("_")]
 f_names = [name for name in f_names if not name.startswith("plot")]
 
+
 # f_filt = ['filter_emg']
 # f_ecg = ['get_ecg_peaks', 'gating', 'wavelet_denoising']
 # f_post = ['envelope', 'baseline']
@@ -138,26 +139,26 @@ def get_defaults(method=None, fs=2048):
             'omit_args': [],
             },
         'gating': {
-            'arg_defaults':{
+            'arg_defaults': {
                 'gate_width_samples': fs//10,
                 'fill_method': 3},
-            'arg_options':{
+            'arg_options': {
                 'gate_width_samples': (1, fs, 1),
-                'fill_method': {0:'Zeros', 1:'Raw interpolate',
-                                2:'Prior average', 3:'RMS interpolate'}},
-            'set_args':{
+                'fill_method': {0: 'Zeros', 1: 'Raw interpolate',
+                                2: 'Prior average', 3: 'RMS interpolate'}},
+            'set_args': {
                 'ecg_peakset_name': 'ecg',
                 },
             'omit_args': [],
             },
         'wavelet_denoising': {
-            'arg_defaults':{
+            'arg_defaults': {
                 'n': int(np.log(fs/20) // np.log(2)),
                 'fixed_threshold': 4.5},
-            'arg_options':{
+            'arg_options': {
                 'n': (1, None, 1),
                 'fixed_threshold': (0.5, None, 0.1)},
-            'set_args':{
+            'set_args': {
                 'ecg_peakset_name': 'ecg'},
             'omit_args': [],
             },
@@ -167,7 +168,7 @@ def get_defaults(method=None, fs=2048):
                 'env_type': 'rms'},
             'arg_options': {
                 'env_window': (1, None, 1),
-                'env_type': {'RMS': 'rms', 'ARV':'arv'}},
+                'env_type': {'RMS': 'rms', 'ARV': 'arv'}},
             'set_args': {},
             'omit_args': ['ci_alpha']
             },
@@ -195,6 +196,7 @@ def get_defaults(method=None, fs=2048):
         return override_defaults
     return override_defaults.get(method, None)
 
+
 def get_default_pipeline(fs_emg=2048):
     # default pipeline for EMG processing
     default_pipeline = {
@@ -205,30 +207,6 @@ def get_default_pipeline(fs_emg=2048):
     }
     return default_pipeline
 
-# Function: envelope
-#   Args and Defaults: {'env_window': None, 'env_type': None, 'ci_alpha': None}
-# Function: baseline
-#   Args and Defaults: {'percentile': 33, 'window_s': None, 'step_s': None, 'method': 'default', 'augm_percentile': 25, 'ma_window': None, 'perc_window': None}
-
-# Function: detect_emg_breaths
-#   Args and Defaults: {'threshold': 0, 'prominence_factor': 0.5, 'min_peak_width_s': None, 'peak_set_name': 'breaths', 'start_idx': 0, 'end_idx': None, 'overwrite': False}
-# Function: calculate_time_products
-#   Args and Defaults: {'peak_set_name': None, 'include_aub': True, 'aub_window_s': None, 'aub_reference_signal': None, 'parameter_name': None}
-
-# Function: link_peak_set
-#   Args and Defaults: {'peak_set_name': None, 't_reference_peaks': None, 'linked_peak_set_name': None}
-
-# Function: set_peaks
-#   Args and Defaults: {'peak_idxs': None, 'signal': None, 'peak_set_name': None, 'overwrite': False}
-# Function: signal_type_data
-#   Args and Defaults: {}
-
-# Function: test_emg_quality
-#   Args and Defaults: {'peak_set_name': None, 'cutoff': None, 'skip_tests': None, 'parameter_names': None, 'verbose': True}
-# Function: test_linked_peak_sets
-#   Args and Defaults: {'peak_set_name': None, 'linked_timeseries': None, 'linked_peak_set_name': None, 'parameter_names': None, 'cutoff': None, 'skip_tests': None, 'verbose': True}
-# Function: test_pocc_quality
-#   Args and Defaults: {'peak_set_name': None, 'cutoff': None, 'skip_tests': None, 'parameter_names': None, 'verbose': True}
 
 processing_methods = {}
 for name, func in f_list:
