@@ -11,7 +11,6 @@ import numpy as np
 import os
 from dash import (Input, Output, callback, ctx, State, html, ALL,
                   callback_context, no_update)
-                  
 from app import app, variables
 from resurfemg.data_connector import config
 from resurfemg.data_connector import converter_functions as cv
@@ -30,6 +29,7 @@ from definitions import (
 # variable to keep track of which upload button has been clicked
 clicked_input_btn = None
 
+
 def convert_to_os_path(
     path: str,
 ):
@@ -43,28 +43,34 @@ def convert_to_os_path(
         os.sep if os.altsep is None else os.altsep, os.sep)
     return readable_path
 
+
 @callback(Output(EMG_fs_DIV, 'data'),
           Input(EMG_SAMPLING_fs, 'value'))
 def update_emg_fs(freq, ):
-    variables.set_emg_freq(freq)
+    variables.set_fs_emg(freq)
     return 'set'
 
 
 @callback(Output(VENT_fs_DIV, 'data'),
           Input(VENT_SAMPLING_fs, 'value'))
 def update_ventilator_fs(freq):
-    variables.set_ventilator_freq(freq)
+    variables.set_fs_vent(freq)
     return 'set'
 
 
 @app.callback(
-    [Output(MODAL_CENTERED, 'is_open'), Output(EMG_FILE_UPDATED, 'children'), Output(VENT_FILE_UPDATED, 'children')],
-    [Input(EMG_OPEN_CENTERED, 'n_clicks'), Input(VENT_OPEN_CENTERED, 'n_clicks'), Input(CONFIRM_CENTERED, 'n_clicks')],
+    [Output(MODAL_CENTERED, 'is_open'), Output(EMG_FILE_UPDATED, 'children'),
+     Output(VENT_FILE_UPDATED, 'children')],
+    [Input(EMG_OPEN_CENTERED, 'n_clicks'),
+     Input(VENT_OPEN_CENTERED, 'n_clicks'),
+     Input(CONFIRM_CENTERED, 'n_clicks')],
     [State(MODAL_CENTERED, 'is_open'), State(PATH_SELECT, 'data'),
-     State(EMG_FILE_UPDATED, 'children'), State(VENT_FILE_UPDATED, 'children')],
+     State(EMG_FILE_UPDATED, 'children'),
+     State(VENT_FILE_UPDATED, 'children')],
     prevent_initial_call=True
 )
-def toggle_modal(n1, n2, n3, is_open, selected_file, current_msg_emg, current_msg_vent):
+def toggle_modal(
+        n1, n2, n3, is_open, selected_file, current_msg_emg, current_msg_vent):
     global clicked_input_btn
 
     message_emg = current_msg_emg
@@ -74,28 +80,27 @@ def toggle_modal(n1, n2, n3, is_open, selected_file, current_msg_emg, current_ms
         clicked_input_btn = ctx.triggered_id
 
     if ctx.triggered_id == CONFIRM_CENTERED:
-        data, metadata = read_file(selected_file)
-        
+        data, meta = read_file(selected_file)
         if data is not None:
             if clicked_input_btn == EMG_OPEN_CENTERED:
-                variables.set_emg(data)
+                # variables.set_emg(data)
                 variables.set_emg_filename('File: ' + selected_file)
                 emg_timeseries = EmgDataGroup(
                     y_raw=data,
-                    fs=metadata['fs'] if 'fs' in metadata else None,
-                    labels=metadata['labels'] if 'labels' in metadata else None,
-                    units=metadata['units'] if 'units' in metadata else None,
+                    fs=meta['fs'] if 'fs' in meta else None,
+                    labels=meta['labels'] if 'labels' in meta else None,
+                    units=meta['units'] if 'units' in meta else None,
                 )
                 variables.set_emg_timeseries(emg_timeseries)
                 message_emg = 'File correctly uploaded: ' + selected_file
             elif clicked_input_btn == VENT_OPEN_CENTERED:
-                variables.set_ventilator(data)
+                # variables.set_ventilator(data)
                 variables.set_ventilator_filename('File: ' + selected_file)
                 vent_timeseries = VentilatorDataGroup(
                     y_raw=data,
-                    fs=metadata['fs'] if 'fs' in metadata else None,
-                    labels=metadata['labels'] if 'labels' in metadata else None,
-                    units=metadata['units'] if 'units' in metadata else None,
+                    fs=meta['fs'] if 'fs' in meta else None,
+                    labels=meta['labels'] if 'labels' in meta else None,
+                    units=meta['units'] if 'units' in meta else None,
                 )
                 variables.set_vent_timeseries(vent_timeseries)
                 message_vent = 'File correctly uploaded: ' + selected_file
@@ -123,7 +128,7 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
     triggered_id = callback_context.triggered_id
     path = None
     dir_inputs = [
-        ('Home', os.getcwd(), '🏠'), 
+        ('Home', os.getcwd(), '🏠'),
         ('User', os.path.expanduser('~'), '👤'),
         ('Computer', os.path.abspath(os.sep), '💻'),
     ]
@@ -136,7 +141,7 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
     dir_list = []
     false_dirs = 0
     for i, (_dir_name, _dir_path, icon) in enumerate(dir_inputs):
-        style={
+        style = {
             'color': 'black',
             'whiteSpace': 'nowrap',
             'overflow': 'hidden',
@@ -148,7 +153,7 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
         if os.path.exists(_dir_path):
             link = html.A([html.Span(
                 _dir_name,
-                id={'type': DIR_FAVORITES,'index': i-false_dirs},
+                id={'type': DIR_FAVORITES, 'index': i-false_dirs},
                 title=convert_to_os_path(_dir_path),
                 style=style,
             )], href='#')
@@ -183,7 +188,7 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
         path_error = ''
     else:
         path_error = 'Path not valid'
-    
+
     cwd_files = []
     if path and Path(path).is_dir():
         work_path = Path(path)
@@ -217,7 +222,7 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
                 style['fontWeight'] = 'bold'
             elif is_sel_file:
                 style['backgroundColor'] = 'yellow'
-            
+
             link = html.A([
                 html.Span(
                     file, id={'type': LISTED_FILES, 'index': i},
@@ -242,14 +247,14 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
     State({'type': DIR_FAVORITES, 'index': ALL}, 'title'),
     State(CWD, 'children'))
 def store_clicked_file(
-    n_clicks_f, href_f, title_f, n_clicks_d, href_d, title_d, cwd):
+        n_clicks_f, href_f, title_f, n_clicks_d, href_d, title_d, cwd):
     if ((not n_clicks_f or set(n_clicks_f) == {None})
-        and (not n_clicks_d or set(n_clicks_d) == {None})):
+            and (not n_clicks_d or set(n_clicks_d) == {None})):
         raise PreventUpdate
     trigger = ctx.triggered_id
     index = ctx.triggered_id['index']
     if trigger['type'] == LISTED_FILES:
-        title = title_f[index] 
+        title = title_f[index]
     else:
         title = title_d[index]
     return title
@@ -265,11 +270,11 @@ def read_file(file_path: str) -> np.ndarray:
     """
     try:
         try:
-            data, _, metadata = cv.load_file(file_path, verbose=False)
+            data, _, meta = cv.load_file(file_path, verbose=False)
         except Exception as e:
-            raise Exception(f"Error loading file: {e}")
+            raise RuntimeError(f"Error loading file: {e}") from e
     except:
         data = None
-        metadata = None
+        meta = None
 
-    return data, metadata
+    return data, meta

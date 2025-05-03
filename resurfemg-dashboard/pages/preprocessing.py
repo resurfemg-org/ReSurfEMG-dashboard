@@ -151,7 +151,8 @@ layout = html.Div([
 
         dbc.Col([
             dbc.Card([
-                dbc.CardHeader("Processed signals", style={'text-align': 'center'}),
+                dbc.CardHeader("Processed signals",
+                               style={'text-align': 'center'}),
                 html.Div(id='preprocessing-processed-container'),
             ]),
 
@@ -180,10 +181,14 @@ layout = html.Div([
     html.P(),
     dcc.ConfirmDialog(
         id='confirm-upload',
-        message='Uploading the parameters will overwrite the current settings. Are you sure you want to continue?',
+        message="""
+            Uploading the parameters will overwrite the currentsettings. Are
+            you sure you want to continue?""",
     ),
     dcc.ConfirmDialog(
         id='confirm-reset',
-        message='Resetting the parameters will overwrite the current settings. Are you sure you want to continue?',
+        message="""
+            Resetting the parameters will overwrite the current settings. Are
+            you sure you want to continue?""",
     ),
 ])

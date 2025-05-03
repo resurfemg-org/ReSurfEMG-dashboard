@@ -1,7 +1,10 @@
 # Run this app with `python index.py` and
 # visit http://127.0.0.1:8050/ in your web browser.
 import base64
-import callbacks_update_data, callbacks_view_raw, callbacks_preprocessing, callbacks_features
+import callbacks_update_data
+import callbacks_view_raw
+import callbacks_preprocessing
+import callbacks_features
 import dash
 import dash_bootstrap_components as dbc
 from dash import html
@@ -72,8 +75,7 @@ nav = dbc.Row(
         align='center',
         style={'height': '75px',
                'background-color': colors['dark-green'],
-               'color': colors['white']
-}
+               'color': colors['white']}
     )
 
 app.layout = dbc.Container([

@@ -8,7 +8,8 @@ This file contains functions to work functions from the ReSurfEMG library.
 import dash
 import dash_bootstrap_components as dbc
 from dash import html, dcc, dash_table
-from definitions import (ComputedFeatures, BreathSelectionMethod, default_breath_method)
+from definitions import (ComputedFeatures, BreathSelectionMethod,
+                         default_breath_method)
 from definitions import (EMG_FILENAME_FEATURES, FEATURES_COMPUTE_BTN,
                          FEATURES_EMG_GRAPH_DIV, FEATURES_DOWNLOAD_BTN,
                          FEATURES_DOWNLOAD_DCC, FEATURES_DOWNLOAD_TOOLTIP,
@@ -37,10 +38,14 @@ select_computation_card = dbc.Card([
         dbc.Select(
             id=FEATURES_SELECT_COMPUTATION,
             options=[
-                {"label": "Variability", "value": BreathSelectionMethod.VARIABILITY},
-                {"label": "Shannon Entropy", "value": BreathSelectionMethod.SHANNON_ENTROPY},
-                {"label": "Fixed Sample Entropy", "value": BreathSelectionMethod.SAMPLE_ENTROPY},
-                {"label": "Logarithmic Remapping", "value": BreathSelectionMethod.LOG_REMAPPING},
+                {"label": "Variability",
+                 "value": BreathSelectionMethod.VARIABILITY},
+                {"label": "Shannon Entropy",
+                 "value": BreathSelectionMethod.SHANNON_ENTROPY},
+                {"label": "Fixed Sample Entropy",
+                 "value": BreathSelectionMethod.SAMPLE_ENTROPY},
+                {"label": "Logarithmic Remapping",
+                 "value": BreathSelectionMethod.LOG_REMAPPING},
             ],
             value=default_breath_method
         )
@@ -97,7 +102,8 @@ layout = html.Div([
                 id=FEATURES_LOADING,
                 type="default",
                 children=dash_table.DataTable(
-                    [{feature: '' for feature in ComputedFeatures.features_list}],
+                    [{feature: ''
+                      for feature in ComputedFeatures.features_list}],
                     style_table={'overflowX': 'auto'},
                     style_cell={
                         # all three widths are needed

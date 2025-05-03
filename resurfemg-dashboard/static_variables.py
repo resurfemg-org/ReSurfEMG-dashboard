@@ -21,10 +21,10 @@ class Variables:
         self.emg_filename = None
         self.ventilator_filename = None
         self.emg = None
-        self.emg_freq = None
+        self.fs_emg = None
         self.emg_timeseries = None
         self.ventilator = None
-        self.ventilator_freq = None
+        self.fs_vent = None
         self.vent_timeseries = None
         self.emg_processed = None
         self.emg_processed_default = None
@@ -41,11 +41,11 @@ class Variables:
     def get_ventilator_filename(self):
         return self.ventilator_filename
 
-    def set_emg(self, emg):
-        self.emg = emg
+    # def set_emg(self, emg):
+    #     self.emg = emg
 
-    def get_emg(self):
-        return self.emg
+    # def get_emg(self):
+    #     return self.emg
 
     def set_emg_timeseries(self, emg_timeseries):
         self.emg_timeseries = emg_timeseries
@@ -53,11 +53,11 @@ class Variables:
     def get_emg_timeseries(self):
         return self.emg_timeseries
 
-    def set_ventilator(self, ventilator):
-        self.ventilator = ventilator
+    # def set_ventilator(self, ventilator):
+    #     self.ventilator = ventilator
 
-    def get_ventilator(self):
-        return self.ventilator
+    # def get_ventilator(self):
+    #     return self.ventilator
 
     def set_vent_timeseries(self, vent_timeseries):
         self.vent_timeseries = vent_timeseries
@@ -65,26 +65,26 @@ class Variables:
     def get_vent_timeseries(self):
         return self.vent_timeseries
 
-    def set_emg_freq(self, emg_freq):
-        self.emg_freq = emg_freq
+    def set_fs_emg(self, fs_emg):
+        self.fs_emg = fs_emg
 
-    def get_emg_freq(self):
-        return self.emg_freq
+    def get_fs_emg(self):
+        return self.fs_emg
 
-    def set_ventilator_freq(self, ventilator_freq):
-        self.ventilator_freq = ventilator_freq
+    def set_fs_vent(self, fs_vent):
+        self.fs_vent = fs_vent
 
-    def get_ventilator_freq(self):
-        return self.ventilator_freq
+    def get_fs_vent(self):
+        return self.fs_vent
 
-    def set_emg_processed(self, emg_processed):
-        self.emg_processed = emg_processed
+    # def set_emg_processed(self, emg_processed):
+    #     self.emg_processed = emg_processed
 
-    def get_emg_processed(self):
-        return self.emg_processed
+    # def get_emg_processed(self):
+    #     return self.emg_processed
 
-    def set_emg_processed_default(self, emg_processed_default):
-        self.emg_processed_default = emg_processed_default
+    # def set_emg_processed_default(self, emg_processed_default):
+    #     self.emg_processed_default = emg_processed_default
 
-    def get_emg_processed_default(self):
-        return self.emg_processed_default
+    # def get_emg_processed_default(self):
+    #     return self.emg_processed_default

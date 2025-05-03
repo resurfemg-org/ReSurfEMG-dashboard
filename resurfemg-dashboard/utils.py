@@ -4,13 +4,11 @@ import definitions
 import json
 import numpy as np
 import plotly.graph_objects as go
-import resurfemg.helper_functions as hf
 import trace_updater
 from dash import dcc, html
-from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, GatingMethod, processing_methods, get_defaults
+from definitions import processing_methods, get_defaults
 from plotly_resampler import FigureResampler
 from plotly.subplots import make_subplots
-from scipy.signal import find_peaks
 from typing import Dict
 from uuid import uuid4
 
@@ -46,8 +44,9 @@ def update_plot_data(new_data, new_info, prev_data=None, prev_info=None):
 
     return plot_data, plot_info
 
-# build the layout for emg graphs
+
 def add_emg_graphs(plot_data, plot_info, fs, titles=None, units=None):
+    """build the layout for emg graphs"""
     if plot_data is None:
         return []
 
@@ -211,8 +210,10 @@ def get_dict(graph_id_dict, relayoutdata):
     return graph_dict_raw.get(
         graph_id_dict["index"])._construct_update_data(relayoutdata)
 
+
 def get_graph_fig(dict_key):
     return graph_dict_raw.get(dict_key)
+
 
 def get_graph_dict():
     return graph_dict_raw
@@ -221,6 +222,7 @@ def get_graph_dict():
 # function needed to update graphs using plotly_resampler
 def set_dict(uid, figure):
     graph_dict_raw[uid] = figure
+
 
 def format_option(option):
     if isinstance(option, str):
@@ -243,8 +245,9 @@ def format_option(option):
         return "{:.1f}".format(option)
     return option
 
-# get auto generated layout for processing steps
+
 def get_processing_step_layout(card_id, method, fs=2048):
+    """get auto generated layout for processing steps"""
     layout = []
     options = get_defaults(method, fs) or processing_methods[method]
 
@@ -284,8 +287,8 @@ def get_processing_step_layout(card_id, method, fs=2048):
                         name=option,
                         options=[
                             {"label": format_option(value),
-                             "value": key} for key, value 
-                             in var_options['options'].items()
+                             "value": key} for key, value in
+                             var_options['options'].items()
                         ],
                         value=options['arg_defaults'][option],
                         style={"width": "100%"}
@@ -339,7 +342,8 @@ def get_new_step_body(index, default=False, core_body=None, method=None,
                 header,
                 dbc.Col(
                     html.Button(
-                        html.I(className="fas fa-times", style={'color': 'red'}),
+                        html.I(className="fas fa-times",
+                               style={'color': 'red'}),
                         className="ml-auto close",
                         id={"type": "step-close-button", "index": str(index)},
                         style={
@@ -373,7 +377,8 @@ def get_idx_dict_list(dict_list, key, value):
 
 
 # # build the json containing the params for the cutter
-# def build_cutter_params_json(step_number: int, percentage: int, tolerance: int):
+# def build_cutter_params_json(
+#         step_number: int, percentage: int, tolerance: int):
 #     data = {
 #         'step_number': step_number,
 #         'step_type': ProcessTypology.CUT.name,
@@ -382,85 +387,6 @@ def get_idx_dict_list(dict_list, key, value):
 #     }
 
 #     return data
-
-
-# # build the json containing the params for the band pass filter
-# def build_bandpass_params_json(step_number: int, low_fs: int, high_fs: int):
-#     data = {
-#         'step_number': step_number,
-#         'step_type': ProcessTypology.BAND_PASS.name,
-#         'low_fs': low_fs,
-#         'high_fs': high_fs
-#     }
-
-#     return data
-
-
-# # build the json containing the params for the high pass filter
-# def build_highpass_params_json(step_number: int, cut_fs: int):
-#     data = {
-#         'step_number': step_number,
-#         'step_type': ProcessTypology.HIGH_PASS.name,
-#         'cut_fs': cut_fs
-#     }
-
-#     return data
-
-
-# # build the json containing the params for the low pass filter
-# def build_lowpass_params_json(step_number: int, cut_fs: int):
-#     data = {
-#         'step_number': step_number,
-#         'step_type': ProcessTypology.LOW_PASS.name,
-#         'cut_fs': cut_fs
-#     }
-
-#     return data
-
-
-# # build the json containing the params for the ecg removal
-# def build_ecgfilt_params_json(step_number: int, method: EcgRemovalMethods, gating_method: GatingMethod = None):
-#     data = {
-#         'step_number': step_number,
-#         'step_type': ProcessTypology.ECG_REMOVAL.name,
-#         'method': method.name
-#     }
-
-#     if gating_method is not None:
-#         data['gating_method'] = gating_method.name
-
-#     return data
-
-
-# # build the json containing the params for the envelope extraction
-# def build_envelope_params_json(step_number: int, method: EnvelopeMethod):
-#     data = {
-#         'step_number': step_number,
-#         'step_type': ProcessTypology.ENVELOPE.name,
-#         'method': method.name
-#     }
-
-#     return data
-
-
-# def get_ecg_removal_value(method_name):
-#     ecg_removal_value = 0
-
-#     for ecg_method in EcgRemovalMethods:
-#         if method_name == ecg_method.name:
-#             ecg_removal_value = ecg_method.value
-
-#     return ecg_removal_value
-
-
-# def get_envelope_method_value(method_name):
-#     envelope_value = 0
-
-#     for envelope_method in EnvelopeMethod:
-#         if method_name == envelope_method.name:
-#             envelope_value = envelope_method.value
-
-#     return envelope_value
 
 
 def param_file_to_json(param_file):
@@ -480,39 +406,30 @@ def upload_additional_steps(params_file):
     for steps_index in range(5, len(data) - 1):
         step_type = data[steps_index]['step_type']
         card_counter_local += 1
-        # if step_type == ProcessTypology.BAND_PASS.name:
-        #     new_card = get_band_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
-        #                                     {"type": "additional-step-high", "index": str(card_counter_local)},
-        #                                     data[steps_index]['low_fs'],
-        #                                     data[steps_index]['high_fs'])
-        #     list_value = ProcessTypology.BAND_PASS.value
-        # elif step_type == ProcessTypology.HIGH_PASS.name:
-        #     new_card = get_high_pass_layout({"type": "additional-step-low", "index": str(card_counter_local)},
-        #                                     data[steps_index]['cut_fs'])
-        #     list_value = ProcessTypology.HIGH_PASS.value
-        # elif step_type == ProcessTypology.LOW_PASS.name:
-        #     new_card = get_high_pass_layout({"type": "additional-step-high", "index": str(card_counter_local)},
-        #                                     data[steps_index]['cut_fs'])
-        #     list_value = ProcessTypology.LOW_PASS.value
         # elif step_type == ProcessTypology.ECG_REMOVAL.name:
-        #     ecg_removal_value = get_ecg_removal_value(data[steps_index]['method'])
-        #     new_card = get_ecg_removal_layout({"type": "additional-step-removal", "index": str(card_counter_local)},
-        #                                       data[steps_index]['method'])
+        #     ecg_removal_value = get_ecg_removal_value(
+        #         data[steps_index]['method'])
+        #     new_card = get_ecg_removal_layout(
+        #         {"type": "additional-step-removal",
+        #          "index": str(card_counter_local)},
+        #          data[steps_index]['method'])
         #     list_value = ProcessTypology.ECG_REMOVAL.value
-        new_card = get_new_step_body({"type": "additional-step-removal",
-                                      "index": str(card_counter_local)},
-                                      default=False)
+        # new_card = get_new_step_body(
+        #     {"type": "additional-step-removal",
+        #      "index": str(card_counter_local)}, default=False)
 
-        steps_body = get_new_step_body(card_counter_local, list_value, new_card)
+        steps_body = get_new_step_body(
+            card_counter_local, list_value, new_card)
         core_body = core_body + [steps_body, html.P()]
 
     return core_body, card_counter_local
 
 
 def check_default_cut_fs(default_fs: int, sampling_rate: int) -> int:
-    # check compatibility of the base filter upper cut fs
-    # if the sampling fs is lower than twice the default value
-    # we need to adjust it
+    """
+    check compatibility of the base filter upper cut fs if the sampling fs
+    is lower than twice the default value we need to adjust it
+    """
 
     high_cut = default_fs
 

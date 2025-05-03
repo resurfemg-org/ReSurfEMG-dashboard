@@ -13,14 +13,12 @@ import pandas as pd
 import utils
 from app import variables
 from dash import Input, Output, State, callback, MATCH, ALL, html, ctx, dcc
-from definitions import ProcessTypology, EcgRemovalMethods, EnvelopeMethod, FILE_IDENTIFIER, GatingMethod
+from definitions import FILE_IDENTIFIER
 from resurfemg.data_connector.data_classes import EmgDataGroup
 
 card_counter = 0
 json_parameters = []
 
-# inspect.getfullargspec(TimeSeries)
-# inspect.getmembers(TimeSeries, predicate=inspect.isfunction)
 
 # on loading add the emg graphs
 @callback(Output('emg-filename-preprocessing', 'children'),
@@ -37,39 +35,10 @@ def show_raw_data(data):
 @callback(Output('preprocessing-processed-container', 'children'),
           Output('download-data-btn', 'disabled'),
           Input('apply-pipeline-btn', 'n_clicks'),
-        #   State('base-filter-low', 'value'),
-        #   State('base-filter-high', 'value'),
-        #   State({"type": "ecg-filter-select", "index": "0"}, "value"),
-        #   State('envelope-extraction-select', 'value'),
           State({"type": "additional-step-core", "index": ALL}, "id"),
           State({"type": "additional-step-type", "index": ALL}, "value"),
-          State({"type": "additional-step-core", "index": ALL}, "children"),
-        #   State({"type": "additional-step-low", "index": ALL}, "value"),
-        #   State({"type": "additional-step-low", "index": ALL}, "id"),
-        #   State({"type": "additional-step-high", "index": ALL}, "value"),
-        #   State({"type": "additional-step-high", "index": ALL}, "id"),
-        #   State({"type": "ecg-filter-select", "index": ALL}, "value"),
-        #   State({"type": "ecg-filter-select", "index": ALL}, "id"),
-        #   State({"type": "gating-method-type", "index": ALL}, "value"),
-        #   State({"type": "gating-method-type", "index": ALL}, "id")
-        )
-def show_data(click,
-            #   low_freq,
-            #   high_freq_default,
-            #   ecg_method,
-            #   envelope_method,
-              additional_card,
-              additional_steps,
-              additional_steps_args,
-            #   additional_low,
-            #   additional_low_idx,
-            #   additional_high,
-            #   additional_high_idx,
-            #   additional_rem,
-            #   additional_rem_idx,
-            #   gating_method,
-            #   gating_method_idx
-              ):
+          State({"type": "additional-step-core", "index": ALL}, "children"))
+def show_data(click, cards, steps, steps_args):
     # variables initialization
     global json_parameters
 
@@ -78,11 +47,12 @@ def show_data(click,
     # Added to easily verify the file compatibility when uploaded
     json_parameters.append({'file_identifier': FILE_IDENTIFIER})
 
-    emg_data = variables.get_emg()
+    # emg_data = variables.get_emg()
     emg_ts = variables.get_emg_timeseries()
-    fs = variables.get_emg_freq()
+    fs = variables.get_fs_emg()
 
-    # # we have to make sure that the cut-off frequencies are in an acceptable range
+    # we have to make sure that the cut-off frequencies are in an acceptable
+    # range
     # high_freq = utils.check_default_cut_fs(high_freq_default, fs)
     trigger = ctx.triggered_id
     # Set the default processing pipeline
@@ -101,12 +71,12 @@ def show_data(click,
     if trigger is not None:
         # Process the set processing pipeline
         sel_opts = {}
-        for n, card in enumerate(additional_card):
+        for n, card in enumerate(cards):
             card_id = int(card['index'])
             sel_opts[card_id] = {}
-            sel_opts[card_id]['method'] = additional_steps[n]
+            sel_opts[card_id]['method'] = steps[n]
             sel_opts[card_id]['args_val'] = {}
-            for item in additional_steps_args[n]:
+            for item in steps_args[n]:
                 arg_id = item['props']['children'][1]['props']['id']['type']
                 if arg_id.startswith('processing-step-'):
                     arg_name = item['props']['children'][1]['props']['name']
@@ -133,58 +103,53 @@ def show_data(click,
         custom_pipeline = def_opts != sel_opts
     else:
         custom_pipeline = False
-        
 
     # if data have been loaded, apply the processing
-    if emg_data is not None:
+    if emg_ts is not None:
         # apply cut
-        # emg_cut = hf.bad_end_cutter_for_samples(emg_data, cut_percent, cut_tolerance)
-        # json_parameters.append(utils.build_cutter_params_json(1, cut_percent, cut_tolerance))
+        # emg_cut = hf.bad_end_cutter_for_samples(
+        #   emg_data, cut_percent, cut_tolerance)
+        # json_parameters.append(utils.build_cutter_params_json(
+        #   1, cut_percent, cut_tolerance))
         ecg_removal_methods = definitions.ecg_removal_methods
         ecg_rem_counter = 0
         for i, options in def_opts.items():
             method = options['method']
             if method in ecg_removal_methods:
                 ecg_peakset_name = 'ecg_' + str(ecg_rem_counter)
-                emg_ts.run('get_ecg_peaks',
-                                   name=ecg_peakset_name,
-                                   overwrite=True)
+                emg_ts.run('get_ecg_peaks', name=ecg_peakset_name,
+                           overwrite=True)
                 options['args_val']['ecg_peakset_name'] = ecg_peakset_name
                 ecg_rem_counter += 1
             emg_ts.run(method, **options['args_val'])
 
-        preprocessed_def = np.array([ts.y_clean for ts in emg_ts])
-        emg_env = np.array([ts.y_env for ts in emg_ts])
-
-        variables.set_emg_processed_default(preprocessed_def)
-        variables.set_emg_processed(emg_env)
         variables.set_emg_timeseries(emg_ts)
 
         titles = [ts.label for ts in emg_ts]
         units = [ts.y_units for ts in emg_ts]
-        preprocessed_def = variables.get_emg_processed_default()
 
         plot_data, plot_info = utils.update_plot_data(
-            new_data=emg_data,
-            new_info={'signal':'Raw', 'color':'black', 'secondary':True,
+            new_data=np.array([ts['raw'] for ts in emg_ts]),
+            new_info={'signal': 'Raw', 'color': 'black', 'secondary': True,
                       'visible': 'legendonly'},
         )
         plot_data, plot_info = utils.update_plot_data(
-            new_data=preprocessed_def,
-            new_info={'signal':'Filtered', 'color':'blue', 'secondary':False,
+            new_data=np.array([ts['clean'] for ts in emg_ts]),
+            new_info={'signal': 'Filtered', 'color': 'blue',
+                      'secondary': False,
                       'visible': 'legendonly' if custom_pipeline else True},
             prev_data=plot_data, prev_info=plot_info
         )
         plot_data, plot_info = utils.update_plot_data(
-            new_data=emg_env,
-            new_info={'signal':'Envelope', 'color':'red', 'secondary':False,
+            new_data=np.array([ts['env'] for ts in emg_ts]),
+            new_info={'signal': 'Envelope', 'color': 'red', 'secondary': False,
                       'visible': 'legendonly' if custom_pipeline else True},
             prev_data=plot_data, prev_info=plot_info
         )
         fs = emg_ts.param['fs'] if 'fs' in emg_ts.param else None
 
         if custom_pipeline:
-            emg_raw = np.array([ts.y_raw for ts in emg_ts])
+            emg_raw = np.array([ts['raw'] for ts in emg_ts])
             emg_ts_custom = EmgDataGroup(
                 emg_raw, fs=fs, labels=titles, units=units)
             ecg_rem_counter = 0
@@ -193,130 +158,30 @@ def show_data(click,
                 if method in ecg_removal_methods:
                     ecg_peakset_name = 'ecg_' + str(ecg_rem_counter)
                     emg_ts_custom.run('get_ecg_peaks',
-                                    name=ecg_peakset_name,
-                                    overwrite=True)
+                                      name=ecg_peakset_name,
+                                      overwrite=True)
                     options['args_val']['ecg_peakset_name'] = ecg_peakset_name
                     ecg_rem_counter += 1
                 emg_ts_custom.run(method, **options['args_val'])
 
-            preprocessed_def = np.array([ts.y_clean for ts in emg_ts_custom])
-            emg_env = np.array([ts.y_env for ts in emg_ts_custom])
             plot_data, plot_info = utils.update_plot_data(
-                new_data=preprocessed_def,
+                new_data=np.array([ts['clean'] for ts in emg_ts_custom]),
                 new_info={
-                    'signal':'Filtered (custom)', 'color':'cyan',
-                    'secondary':False,
+                    'signal': 'Filtered (custom)', 'color': 'cyan',
+                    'secondary': False,
                     'visible': True},
                 prev_data=plot_data, prev_info=plot_info
             )
             plot_data, plot_info = utils.update_plot_data(
-                new_data=emg_env,
+                new_data=np.array([ts['env'] for ts in emg_ts_custom]),
                 new_info={
-                    'signal':'Envelope (custom)', 'color':'orange',
-                    'secondary':False,
+                    'signal': 'Envelope (custom)', 'color': 'orange',
+                    'secondary': False,
                     'visible': True},
                 prev_data=plot_data, prev_info=plot_info
             )
-
-
-        # emg_ts.run('filter_emg')
-        # emg_ts.run('get_ecg_peaks', overwrite=True)
-        # emg_ts.run('gating')
-        # emg_ts.run('envelope')
-        
-        
-
-        
-        
-        # new_step_emg = np.array([ts.y_clean for ts in emg_ts])
-        # # get the custom steps added, and apply the selected processing
-            # for n, card in enumerate(additional_card):
-            #     card_id = card['index']
-            #     step = additional_steps[n]
-            #     print(f'Processing step {n}: {step}')
-            #     print(additional_steps_args[n])
-        #     if step == ProcessTypology.BAND_PASS.value:
-        #         idx_low = utils.get_idx_dict_list(
-        #             additional_low_idx, 'index', card_id)
-        #         idx_high = utils.get_idx_dict_list(
-        #             additional_high_idx, 'index', card_id)
-
-        #         low_cut = additional_low[idx_low]
-        #         high_cut_input = additional_high[idx_high]
-        #         high_cut = utils.check_default_cut_fs(
-        #             high_cut_input, fs)
-
-        #         new_step_emg = filt.emg_bandpass_butter(
-        #             new_step_emg, high_pass=low_cut, low_pass=high_cut,
-        #             fs_emg=fs)
-        #         json_parameters.append(utils.build_bandpass_params_json(
-        #             len(json_parameters) + 1, low_cut, high_cut))
-
-        #     elif step == ProcessTypology.HIGH_PASS.value:
-        #         idx = utils.get_idx_dict_list(
-        #             additional_low_idx, 'index', card_id)
-        #         low_cut = additional_low[idx]
-
-        #         new_step_emg = filt.emg_highpass_butter(
-        #             new_step_emg, high_pass=low_cut, fs_emg=fs)
-        #         json_parameters.append(utils.build_highpass_params_json(
-        #             len(json_parameters) + 1, low_cut))
-
-        #     elif step == ProcessTypology.LOW_PASS.value:
-        #         idx = utils.get_idx_dict_list(
-        #             additional_high_idx, 'index', card_id)
-
-        #         high_cut_input = additional_high[idx]
-        #         high_cut = utils.check_default_cut_fs(
-        #             high_cut_input, fs)
-
-        #         # TODO: add function when it will be available in helper_functions
-        #         new_step_emg = filt.emg_lowpass_butter(
-        #             new_step_emg, low_cut, fs)
-        #         json_parameters.append(utils.build_lowpass_params_json(
-        #             n + 5, high_cut))
-
-        #     elif step == ProcessTypology.ECG_REMOVAL.value:
-        #         idx = utils.get_idx_dict_list(
-        #             additional_rem_idx, 'index', card_id) - 1
-
-        #         ecg_additional_method = additional_rem[idx]
-        #         if ecg_additional_method == EcgRemovalMethods.GATING.value:
-        #             gating_method_type = int(gating_method[idx])
-        #             json_parameters.append(utils.build_ecgfilt_params_json(
-        #                 len(json_parameters) + 1,
-        #                 EcgRemovalMethods(ecg_additional_method),
-        #                 GatingMethod(gating_method[idx])
-        #             ))
-        #         else:
-        #             gating_method_type = None
-        #             json_parameters.append(utils.build_ecgfilt_params_json(
-        #                 len(json_parameters) + 1,
-        #                 EcgRemovalMethods(ecg_additional_method)
-        #             ))
-
-        #         # at the moment we need to create a matrix with 3 leads to use the methods
-        #         # the lead 0 is the  ecg lead, the other two are the same processed signal
-        #         # if the matrix is still bi-dimensional, we use it
-
-        #         if new_step_emg.ndim == 1:
-        #             tmp_matrix = np.array([emg_cut_final[0, :],
-        #                                    new_step_emg,
-        #                                    new_step_emg])
-        #         else:
-        #             tmp_matrix = new_step_emg
-
-        #         new_step_emg, titles = utils.apply_ecg_removal(
-        #             ecg_additional_method,
-        #             tmp_matrix,
-        #             fs,
-        #             gating_method_type)
-
-
-
-        # # if the processing is the default one, store it (TODO: FIX
-        # store the processed signal
-        
+            #         json_parameters.append(utils.build_highpass_params_json(
+            #             len(json_parameters) + 1, low_cut))
 
         children_emg = utils.add_emg_graphs(
             plot_data, plot_info, fs, titles, units)
@@ -355,7 +220,8 @@ def collapse_graph(toggle_value):
           State('upload-processing-params', 'contents'),
           State('custom-preprocessing-steps', 'children'),
           prevent_initial_call=False)
-def add_step(click, close, confirm_upload, confirm_reset, params_file, previous_content):
+def add_step(click, close, confirm_upload, confirm_reset, params_file,
+             previous_content):
     global card_counter
 
     id_ctx = ctx.triggered_id
@@ -382,7 +248,8 @@ def add_step(click, close, confirm_upload, confirm_reset, params_file, previous_
     elif id_ctx == 'confirm-upload':
         if confirm_upload:
             card_counter = 0
-            updated_content, card_counter = utils.upload_additional_steps(params_file)
+            updated_content, card_counter = utils.upload_additional_steps(
+                params_file)
         else:  # if the operation is cancelled, do nothing
             updated_content = previous_content
     # if the restore params button has been clicked
@@ -395,7 +262,8 @@ def add_step(click, close, confirm_upload, confirm_reset, params_file, previous_
     else:
         remove_idx = id_ctx['index']
         for n, el in enumerate(previous_content):
-            if el['type'] == 'Card' and el['props']['id']['index'] == remove_idx:
+            prop_idx = el['props']['id']['index']
+            if el['type'] == 'Card' and prop_idx == remove_idx:
                 del previous_content[n + 1]  # remove the html.P element
                 previous_content.remove(el)  # remove the card
 
@@ -423,11 +291,16 @@ def get_body(selected_value, card_id):
           prevent_initial_call=True)
 def download_data(click):
     # build the params file
-    params_file = dict(content=json.dumps(json_parameters), filename='parameters.json')
-
-    # build the csv file with the processed signal
-    # to use the dcc.Download element, we need to convert the np array into a dataframe
-    df = pd.DataFrame(variables.get_emg_processed().transpose())
+    params_file = {'content': json.dumps(json_parameters),
+                   'filename': 'parameters.json'}
+    # build the csv file with the processed signal to use the dcc.Download
+    # element, we need to convert the np array into a dataframe
+    emg_ts = variables.get_emg_timeseries()
+    if emg_ts is not None:
+        data = np.array([ts['env'] for ts in emg_ts])
+    else:
+        data = np.array([])
+    df = pd.DataFrame(data.transpose())
     emg_file = dcc.send_data_frame(df.to_csv, 'emg.csv')
 
     return params_file, emg_file
@@ -499,10 +372,11 @@ def populate_steps(reset_button):
 # def populate_steps(confirm_upload, confirm_reset, params_file):
 #     trigger_id = ctx.triggered_id
 
-#     if (trigger_id == 'confirm-reset' and confirm_reset) or trigger_id is None:
+#     if ((trigger_id == 'confirm-reset' and confirm_reset)
+#           or trigger_id is None):
 #         bandpass_low = definitions.default_bandpass_low
-#         bandpass_high = utils.check_default_cut_fs(definitions.default_bandpass_high,
-#                                                           variables.get_emg_freq())
+#        bandpass_high = utils.check_default_cut_fs(
+#            definitions.default_bandpass_high, variables.get_fs_emg())
 #         first_cut_percentage = definitions.default_first_cut_percentage
 #         first_cut_tolerance = definitions.default_first_cut_tolerance
 #         ecg_removal_value = definitions.default_ecg_removal_value
@@ -523,21 +397,5 @@ def populate_steps(reset_button):
 #         envelope_value = utils.get_envelope_method_value(envelope)
 
 #     if confirm_reset or confirm_upload or trigger_id is None:
-#         return first_cut_percentage, first_cut_tolerance, bandpass_low, bandpass_high, ecg_removal_value, envelope_value
-
-
-# # populate the options on the base of the selected processing type
-# @callback(Output({"type": "ecg-removal-card", "index": MATCH}, "children"),
-#           Input({"type": "ecg-filter-select", "index": MATCH}, "value"),
-#           State({"type": "ecg-removal-card", "index": MATCH}, "children"),
-#           State({"type": "ecg-removal-card", "index": MATCH}, "id"),
-#           prevent_initial_call=True)
-# def get_body(selected_value, container, id_origin):
-#     if selected_value == EcgRemovalMethods.GATING.value:
-#         new_section = container + utils.add_gating_method_options(id_origin["index"])
-#     else:
-#         for element in container:
-#             if 'id' in element['props'] and element['props']['id']['type'] == 'gating-method-div':
-#                 container.remove(element)
-#         new_section = container
-#     return new_section
+#         return (first_cut_percentage, first_cut_tolerance, bandpass_low,
+#                 bandpass_high, ecg_removal_value, envelope_value)

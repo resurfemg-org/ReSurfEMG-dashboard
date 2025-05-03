@@ -23,7 +23,8 @@ modal_dialog = html.Div(
     [
         dbc.Modal(
             [
-                dbc.ModalHeader(dbc.ModalTitle("Select file"), close_button=True),
+                dbc.ModalHeader(dbc.ModalTitle("Select file"),
+                                close_button=True),
                 dbc.ModalBody([
                     dbc.Row([
                         dbc.Col([
@@ -131,7 +132,8 @@ def layout():
             ], width=2),
 
             dbc.Col([
-                html.Div('Ventilator sampling frequency', style={'textAlign': 'left'})
+                html.Div('Ventilator sampling frequency',
+                         style={'textAlign': 'left'})
             ], width=2),
             html.P(),
             html.Div(id=VENT_FILE_UPDATED),
