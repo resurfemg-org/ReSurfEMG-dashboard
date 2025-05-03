@@ -99,9 +99,10 @@ def show_graph(value):
           Input(FEATURES_SELECT_COMPUTATION, 'value'),
           Input(FEATURES_COMPUTE_BTN, 'n_clicks'),
           prevent_initial_call=True)
-def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_input):
+def show_graph(
+        slidebar_stat, method_stat, lead_n, figure, method_input, btn_input):
     """
-    When the slide bar is updated by the user, or the computation method is 
+    When the slide bar is updated by the user, or the computation method is
     changed computes the features and updates the table
     """
 
@@ -131,7 +132,7 @@ def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_inp
 
     features = [{
         ComputedFeatures.BREATHS_COUNT: len(breaths),
-        ComputedFeatures.MAX_AMPLITUDE: 
+        ComputedFeatures.MAX_AMPLITUDE:
             str(np.round(features_df['maxima'].to_numpy().flatten().mean(), 2))
             + ' ± ' + str(
             np.round(features_df['maxima'].to_numpy().flatten().std(), 2)),
@@ -139,7 +140,7 @@ def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_inp
             str(np.round(features_df['auc'].to_numpy().flatten().mean(), 2))
             + ' ± ' + str(
             np.round(features_df['auc'].to_numpy().flatten().std(), 2)),
-        ComputedFeatures.RISE_TIME: 
+        ComputedFeatures.RISE_TIME:
             str(np.round(
                 features_df['rise_time'].to_numpy().flatten().mean(), 2))
             + ' ± ' + str(
@@ -153,7 +154,7 @@ def show_graph(slidebar_stat, method_stat, lead_n, figure, method_input, btn_inp
             str(np.round(
                 features_df['peak_position'].to_numpy().flatten().mean(), 2))
             + ' ± ' + str(np.round(
-            features_df['peak_position'].to_numpy().flatten().std(), 2))}]
+                features_df['peak_position'].to_numpy().flatten().std(), 2))}]
 
     return features
 

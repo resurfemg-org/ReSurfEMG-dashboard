@@ -30,6 +30,7 @@ version = tag[1:]
 with open(os.path.join(project_dir, 'README.md'), 'r') as f:
     readme = f.read()
 
+
 def run_and_log(cmd, **kwargs):
     sys.stderr.write('> {}\n'.format(' '.join(cmd)))
     return subprocess.call(cmd, **kwargs)
@@ -183,8 +184,7 @@ if __name__ == '__main__':
         use_scm_version=True,
         long_description=open('README.md').read(),
         long_description_content_type="text/markdown",
-        cmdclass=
-        {
+        cmdclass={
             'test': UnitTest,
             'lint': Pep8,
             'isort': Isort,
