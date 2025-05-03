@@ -269,12 +269,7 @@ def read_file(file_path: str) -> np.ndarray:
             A ndarray containing the leads, or None if the file is not valid
     """
     try:
-        try:
-            data, _, meta = cv.load_file(file_path, verbose=False)
-        except Exception as e:
-            raise RuntimeError(f"Error loading file: {e}") from e
-    except:
-        data = None
-        meta = None
-
+        data, _, meta = cv.load_file(file_path, verbose=False)
+    except Exception as e:
+        return None, None
     return data, meta
