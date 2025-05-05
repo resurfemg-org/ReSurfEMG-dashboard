@@ -55,18 +55,15 @@ def show_filename(data):
 
 @callback(Output(FEATURES_SELECT_LEAD, 'options'),
           Input(LOAD_FEATURES_DIV, 'data'))
-def show_filename(data):
+def channel_select(data):
     """
     When loading the page, the dropdown menu for selecting the lead is
     populated
     """
     emg_ts = variables.get_emg_timeseries()
     if emg_ts is not None:
-        data = emg_ts.to_numpy(signal_io=('env',))
-
-    if data is not None:
-        options = [{'label': 'Lead ' + str(n), 'value': n}
-                   for n in range(data.shape[0])]
+        options = [{'label': f'Lead {n}: {ts.label}', 'value': n}
+                   for n, ts in enumerate(emg_ts)]
         return options
     return []
 
@@ -80,7 +77,9 @@ def show_graph(value):
     """
     emg_ts = variables.get_emg_timeseries()
     if emg_ts is not None:
-        data = emg_ts.to_numpy(signal_io=('env',))
+        if emg_ts is not None:
+            key = 'env_custom' if 'env_custom' in emg_ts[0] else 'env_default'
+            data = emg_ts.to_numpy(signal_io=(key,))
         if value is not None:
             lead = data[int(value)]
             time_array = utils.get_time_array(
@@ -108,20 +107,25 @@ def show_graph(
 
     global features_df
 
-    data = variables.get_emg_processed()
+    emg_ts = variables.get_emg_timeseries()
+    if emg_ts is not None:
+        if emg_ts is not None:
+            key = 'env_custom' if 'env_custom' in emg_ts[0] else 'env_default'
+            data = emg_ts.to_numpy(signal_io=(key,))
+
     fs = variables.get_fs_emg()
     time_array = utils.get_time_array(data[int(lead_n)].shape[0], fs)
 
     if slidebar_stat is not None and 'xaxis.range' in slidebar_stat:
-        start_sample = (
-            np.abs(time_array - slidebar_stat['xaxis.range'][0])).argmin()
-        stop_sample = (
-            np.abs(time_array - slidebar_stat['xaxis.range'][1])).argmin()
+        start_sample = int((
+            np.abs(time_array - slidebar_stat['xaxis.range'][0])).argmin())
+        stop_sample = int((
+            np.abs(time_array - slidebar_stat['xaxis.range'][1])).argmin())
     elif slidebar_stat is not None and 'xaxis.range[1]' in slidebar_stat:
-        start_sample = (
-            np.abs(time_array - slidebar_stat['xaxis.range[0]'])).argmin()
-        stop_sample = (
-            np.abs(time_array - slidebar_stat['xaxis.range[1]'])).argmin()
+        start_sample = int((
+            np.abs(time_array - slidebar_stat['xaxis.range[0]'])).argmin())
+        stop_sample = int((
+            np.abs(time_array - slidebar_stat['xaxis.range[1]'])).argmin())
     else:
         start_sample = 0
         stop_sample = time_array.shape[0]
@@ -235,31 +239,47 @@ def get_breaths(n_channel, start_sample, stop_sample, method):
     stop_sample: number of the sample where the signal to be computed stops
     method: the method used to compute the breaths
     """
-    emg_timeseries = variables.get_emg_timeseries()
-    emg = emg_timeseries[n_channel]['env']
+    emg_ts = variables.get_emg_timeseries()
+    if emg_ts is not None:
+        key_suffix = '_custom' if 'env_custom' in emg_ts[0] else '_default'
+        # data = emg_ts.to_numpy(signal_io=(key,))
 
-    # TODO: Introduce different methods for breath detection
-    emg_timeseries[n_channel].baseline()
-    emg_timeseries[n_channel].detect_emg_breaths()
-    emg_timeseries[n_channel].peaks['breaths'].detect_on_offset(
-        baseline=emg_timeseries[n_channel]['baseline']
-    )
-    baseline = emg_timeseries[n_channel]['baseline']
-    emg_timeseries[n_channel].calculate_time_products(
-        peak_set_name='breaths')
-    emg_timeseries[n_channel].test_emg_quality(peak_set_name='breaths')
-    emg_timeseries[n_channel].peaks['breaths'].sanitize()
-    peak_df = emg_timeseries[n_channel].peaks['breaths'].peak_df
+        # TODO: Introduce different methods for breath detection
+        # emg_timeseries[n_channel].baseline()
+        emg_ts[n_channel].detect_emg_breaths(
+            start_idx=start_sample,
+            end_idx=stop_sample,
+            signal_io=((f'env{key_suffix}', f'baseline{key_suffix}'),),
+            overwrite=True,
+        )
+        emg_ts[n_channel].peaks['breaths'].detect_on_offset(
+            baseline=emg_ts[n_channel][f'baseline{key_suffix}'],
+        )
+        emg = emg_ts[n_channel][f'env{key_suffix}']
+        baseline = emg_ts[n_channel][f'baseline{key_suffix}']
+        emg_ts[n_channel].calculate_time_products(
+            peak_set_name='breaths',
+            signal_io=(f'baseline{key_suffix}',)
+        )
+        test_param = {
+            'baseline': f'baseline{key_suffix}',
+            'ecg': 'ecg_0'
+        }
+        emg_ts[n_channel].test_emg_quality(
+            peak_set_name='breaths', parameter_names=test_param, verbose=False)
+        emg_ts[n_channel].peaks['breaths'].sanitize()
+        peak_df = emg_ts[n_channel].peaks['breaths'].peak_df
 
-    breaths = [Breath(start_sample=int(row['start_idx']),
-                      stop_sample=int(row['end_idx']-row['start_idx']),
-                      peak_sample=int(row['peak_idx']-row['start_idx']),
-                      amplitude=emg[int(row['start_idx']):int(row['end_idx'])],
-                      baseline=baseline[
-                          int(row['start_idx']):int(row['end_idx'])])
-               for _, row in peak_df.iterrows()]
-
-    return breaths
+        breaths = [Breath(
+            start_sample=int(row['start_idx']),
+            stop_sample=int(row['end_idx']-row['start_idx']),
+            peak_sample=int(row['peak_idx']-row['start_idx']),
+            amplitude=emg[int(row['start_idx']):int(row['end_idx'])],
+            baseline=baseline[
+            int(row['start_idx']):int(row['end_idx'])])
+                for _, row in peak_df.iterrows()]
+        return breaths
+    return []
 
 
 def get_breaths_length(breaths: List[Breath]) -> List[int]:
@@ -270,7 +290,7 @@ def get_breaths_length(breaths: List[Breath]) -> List[int]:
             breaths: list of the breaths
 
     """
-    length = [(breath.stop_sample - breath.start_sample) for breath in breaths]
+    length = [breath.stop_sample for breath in breaths]
 
     return length
 
