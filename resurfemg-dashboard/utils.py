@@ -246,15 +246,19 @@ def format_option(option):
     return option
 
 
-def get_processing_step_layout(card_id, method, fs=2048):
+def get_processing_step_layout(card_id, method, fs=2048, values=None):
     """get auto generated layout for processing steps"""
     layout = []
     options = get_defaults(method, fs) or processing_methods[method]
-
     for option in options['arg_defaults']:
         option_id = {"type": "processing-step-" + option,
-                     "index": card_id['index']}
+                     "index": card_id}
         var_options = {}
+        if isinstance(values, dict) and option in values:
+            set_value = values[option]
+        else:
+            set_value = options['arg_defaults'][option]
+
         if isinstance(options['arg_options'][option], tuple):
             var_options.update({k: v for k, v in zip(
                 ['min', 'max', 'step'],
@@ -266,7 +270,7 @@ def get_processing_step_layout(card_id, method, fs=2048):
                         id=option_id,
                         name=option,
                         type="number",
-                        value=options['arg_defaults'][option],
+                        value=set_value,
                         placeholder=option.replace("_", " ").capitalize(),
                         min=var_options.get('min', None),
                         max=var_options.get('max', None),
@@ -290,7 +294,7 @@ def get_processing_step_layout(card_id, method, fs=2048):
                              "value": key} for key, value in
                             var_options['options'].items()
                         ],
-                        value=options['arg_defaults'][option],
+                        value=set_value,
                         style={"width": "100%"}
                     )
                 ])
@@ -300,8 +304,7 @@ def get_processing_step_layout(card_id, method, fs=2048):
 
 
 # get the layout fot the new processing step card
-def get_new_step_body(index, default=False, core_body=None, method=None,
-                      settings=None):
+def get_new_step_body(index, default=False, core_body=None, method=None):
     if core_body is None:
         core_body = []
     methods = get_defaults()
@@ -376,17 +379,19 @@ def get_idx_dict_list(dict_list, key, value):
     return idx
 
 
-# build the json containing the params for the cutter
-def build_cutter_params_json(
-        step_number: int, percentage: int, tolerance: int):
-    data = {
-        'step_number': step_number,
-        'step_type': ProcessTypology.CUT.name,
-        'percentage': percentage,
-        'tolerance': tolerance
-    }
-
-    return data
+def parse_default_options(default_settings):
+    """parse the default options from the definitions"""
+    def_opts = {}
+    for i, (method, options) in enumerate(default_settings.items()):
+        def_opts[i] = {}
+        def_opts[i]['method'] = method
+        def_opts[i]['args_val'] = {}
+        for arg_name, arg_value in options['arg_defaults'].items():
+            def_opts[i]['args_val'][arg_name] = arg_value
+        set_args = options['set_args']
+        for arg_name in set_args:
+            def_opts[i]['args_val'][arg_name] = set_args[arg_name]
+    return def_opts
 
 
 def parse_preprocessing_options(cards, steps, steps_args, fs_emg):
@@ -426,10 +431,11 @@ def parse_preprocessing_options(cards, steps, steps_args, fs_emg):
 
 def apply_processing_pipeline(emg_ts, pipeline, suffix=''):
     """apply the processing pipeline to the EMG TimeSeries"""
-    filter_methods = definitions.filter_methods
-    ecg_removal_methods = definitions.ecg_removal_methods
-    envelope_methods = definitions.envelope_methods
-    baseline_methods = definitions.baseline_methods
+    methods_div = {
+        'filter': definitions.filter_methods,
+        'ecg_removal': definitions.ecg_removal_methods,
+        'envelope': definitions.envelope_methods,
+        'baseline': definitions.baseline_methods}
     sig_order = ['raw', 'filt' +  suffix, 'clean' + suffix, 'env' + suffix,
                  'baseline' + suffix]
     _src_sig = 'raw'
@@ -439,15 +445,15 @@ def apply_processing_pipeline(emg_ts, pipeline, suffix=''):
         _src_idx = sig_order.index(_src_sig)
         method = options['method']
         _out_sig = next((sig for sig, methods in {
-            'filt' + suffix: filter_methods,
-            'clean' + suffix: ecg_removal_methods,
-            'env' + suffix: envelope_methods,
-            'baseline' + suffix: baseline_methods
+            'filt' + suffix: methods_div['filter'],
+            'clean' + suffix: methods_div['ecg_removal'],
+            'env' + suffix: methods_div['envelope'],
+            'baseline' + suffix: methods_div['baseline']
         }.items() if method in methods), _src_sig)
         signal_io = (_src_sig, _out_sig if _out_sig in sig_order[_src_idx:]
                      else _src_sig)
         options['args_val']['signal_io'] = signal_io
-        if method in ecg_removal_methods:
+        if method in methods_div['ecg_removal']:
             ecg_peakset_name = 'ecg_' + str(ecg_rem_counter)
             emg_ts.run('get_ecg_peaks', name=ecg_peakset_name,
                         overwrite=True)
@@ -458,40 +464,32 @@ def apply_processing_pipeline(emg_ts, pipeline, suffix=''):
     return emg_ts
 
 
-def param_file_to_json(param_file):
-    content_type, content_string = param_file.split(',')
+def pipeline_file_to_json(pipeline_file):
+    _, content_string = pipeline_file.split(',')
     decoded = base64.b64decode(content_string).decode('utf8')
-    data = json.loads(decoded)
-
-    return data
+    return json.loads(decoded)
 
 
-def upload_additional_steps(params_file):
-    core_body = []
+def parse_uploaded_pipeline(pipeline_file):
     card_counter_local = 0
+    card_list = []
+    data = pipeline_file_to_json(pipeline_file)
+    pipeline = data[1]
+    for i, options in pipeline.items():
+        method = options['method']
+        new_step_layout = get_processing_step_layout(
+            int(i), method, fs=2048,
+            values=options['args_val']
+        )
 
-    data = param_file_to_json(params_file)
+        new_step_body = get_new_step_body(
+            int(i), default=False, method=method, core_body=new_step_layout)
+        card_list.append(new_step_body)
+        card_list.append(html.P())
 
-    for steps_index in range(5, len(data) - 1):
-        step_type = data[steps_index]['step_type']
         card_counter_local += 1
-        # elif step_type == ProcessTypology.ECG_REMOVAL.name:
-        #     ecg_removal_value = get_ecg_removal_value(
-        #         data[steps_index]['method'])
-        #     new_card = get_ecg_removal_layout(
-        #         {"type": "additional-step-removal",
-        #          "index": str(card_counter_local)},
-        #          data[steps_index]['method'])
-        #     list_value = ProcessTypology.ECG_REMOVAL.value
-        # new_card = get_new_step_body(
-        #     {"type": "additional-step-removal",
-        #      "index": str(card_counter_local)}, default=False)
 
-        steps_body = get_new_step_body(
-            card_counter_local, list_value, new_card)
-        core_body = core_body + [steps_body, html.P()]
-
-    return core_body, card_counter_local
+    return card_list, card_counter_local
 
 
 def check_default_cut_fs(default_fs: int, sampling_rate: int) -> int:

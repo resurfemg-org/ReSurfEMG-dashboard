@@ -4,7 +4,7 @@ from app import variables
 import numpy as np
 from resurfemg.data_connector.data_classes import TimeSeries
 
-FILE_IDENTIFIER = 'resurfemg_paramfile'
+FILE_IDENTIFIER = 'ReSurfEMG_pipeline'
 
 
 class ProcessTypology(Enum):
@@ -168,7 +168,7 @@ def get_defaults(method=None, fs=2048):
                 'env_type': 'rms'},
             'arg_options': {
                 'env_window': (1, None, 1),
-                'env_type': {'RMS': 'rms', 'ARV': 'arv'}},
+                'env_type': {'rms': 'RMS', 'arv': 'ARV'}},
             'set_args': {},
             'omit_args': ['ci_alpha']
             },
