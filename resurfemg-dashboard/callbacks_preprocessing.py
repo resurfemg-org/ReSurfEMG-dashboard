@@ -49,27 +49,14 @@ def show_data(click, cards, steps, steps_args):
     # Added to easily verify the file compatibility when uploaded
     json_parameters.append({'file_identifier': FILE_IDENTIFIER})
 
-    # emg_data = variables.get_emg()
-    emg_ts = variables.get_emg_timeseries()
-    fs = variables.get_fs_emg()
-
-    trigger = ctx.triggered_id
-    # Set the default processing pipeline
-    default_settings = definitions.get_default_pipeline(fs_emg=2048)
-    def_opts = {}
-    for i, (method, options) in enumerate(default_settings.items()):
-        def_opts[i] = {}
-        def_opts[i]['method'] = method
-        def_opts[i]['args_val'] = {}
-        for arg_name, arg_value in options['arg_defaults'].items():
-            def_opts[i]['args_val'][arg_name] = arg_value
-        set_args = options['set_args']
-        for arg_name in set_args:
-            def_opts[i]['args_val'][arg_name] = set_args[arg_name]
-
-
     # if data have been loaded, apply the processing
+    emg_ts = variables.get_emg_timeseries()
     if emg_ts is not None:
+        # Set the default processing pipeline
+        trigger = ctx.triggered_id
+        fs = variables.get_fs_emg()
+        default_settings = definitions.get_default_pipeline(fs_emg=fs)
+        def_opts = utils.parse_default_options(default_settings)
         if trigger is not None:
             # Process the selected processing pipeline
             sel_opts = utils.parse_preprocessing_options(
@@ -101,6 +88,9 @@ def show_data(click, cards, steps, steps_args):
                 ('clean_custom', 'Filtered', 'blue', False, True))
             signals.append(
                 ('env_custom', 'Envelope', 'orange', False, True))
+            json_parameters.append(variables.get_custom_pipeline())
+        else:
+            json_parameters.append(variables.get_default_pipeline())
         plot_data = None
         plot_info = None
         for signal_io, signal_name, color, secondary, visibility in signals:
@@ -125,7 +115,7 @@ def show_data(click, cards, steps, steps_args):
 # open/close pipeline card
 @callback(Output('pipeline-card-body', 'is_open'),
           Input('pipeline-switch', 'value'))
-def show_raw_data(toggle_value):
+def toggle_pipeline(toggle_value):
     return toggle_value
 
 
@@ -148,23 +138,31 @@ def collapse_graph(toggle_value):
           State('upload-processing-params', 'contents'),
           State('custom-preprocessing-steps', 'children'),
           prevent_initial_call=False)
-def add_step(click, close, confirm_upload, confirm_reset, params_file,
+def add_step(click, close, confirm_upload, confirm_reset, pipeline_file,
              previous_content):
     global card_counter
 
     id_ctx = ctx.triggered_id
-    # if the page is reloaded the steps are reset
-    if id_ctx is None:
+    # if the page is reloaded or confirm-reset is clicked the steps are reset
+    if id_ctx is None or id_ctx == 'confirm-reset':
         card_counter = 0
         default_cards = []
+        fs = variables.get_fs_emg()
+        if fs is None:
+            fs = 2048
+        default_settings = definitions.get_default_pipeline(fs_emg=fs)
+        def_opts = utils.parse_default_options(default_settings)
         for i, method in enumerate(definitions.get_default_pipeline()):
+            core_body = utils.get_processing_step_layout(
+                i, method, values=def_opts[i]['args_val'])
             default_cards.append(
-                utils.get_new_step_body(i, default=True, method=method))
+                utils.get_new_step_body(i, default=True, method=method,
+                                        core_body=core_body))
             default_cards.append(html.P())
             card_counter += 1
         return default_cards
     # if the add steps button is clicked add the card
-    elif id_ctx == 'add-steps-btn':
+    if id_ctx == 'add-steps-btn':
         card_counter += 1
         new_card = utils.get_new_step_body(card_counter)
 
@@ -172,30 +170,26 @@ def add_step(click, close, confirm_upload, confirm_reset, params_file,
             updated_content = new_card
         else:
             updated_content = previous_content + [new_card, html.P()]
-    # if the param file has been added (after button confirmation)
-    elif id_ctx == 'confirm-upload':
+        return updated_content
+    # if the pipeline file has been added (after button confirmation)
+    if id_ctx == 'confirm-upload':
         if confirm_upload:
-            card_counter = 0
-            updated_content, card_counter = utils.upload_additional_steps(
-                params_file)
-        else:  # if the operation is cancelled, do nothing
-            updated_content = previous_content
-    # if the restore params button has been clicked
-    elif id_ctx == 'confirm-reset':
-        if confirm_reset:
-            updated_content = []
-        else:  # if the operation is cancelled, do nothing
-            updated_content = previous_content
-    # if the remove button is clicked, remove the card
-    else:
-        remove_idx = id_ctx['index']
-        for n, el in enumerate(previous_content):
-            prop_idx = el['props']['id']['index']
-            if el['type'] == 'Card' and prop_idx == remove_idx:
-                del previous_content[n + 1]  # remove the html.P element
-                previous_content.remove(el)  # remove the card
-
+            updated_content, card_counter = utils.parse_uploaded_pipeline(
+                pipeline_file)
+            return updated_content
+        # if the operation is cancelled, do nothing
         updated_content = previous_content
+        return updated_content
+
+    # if the remove button is clicked, remove the card
+    remove_idx = id_ctx['index']
+    for n, el in enumerate(previous_content):
+        if (el['type'] == 'Card'
+            and el['props']['id']['index'] == remove_idx):
+            del previous_content[n + 1]  # remove the html.P element
+            previous_content.remove(el)  # remove the card
+
+    updated_content = previous_content
 
     return updated_content
 
@@ -204,10 +198,12 @@ def add_step(click, close, confirm_upload, confirm_reset, params_file,
 @callback(Output({"type": "additional-step-core", "index": MATCH}, "children"),
           Input({"type": "additional-step-type", "index": MATCH}, "value"),
           State({"type": "additional-step-core", "index": MATCH}, "id"),
+          prevent_initial_call=True
           )
 def get_body(selected_value, card_id):
     if selected_value in definitions.get_defaults():
-        new_section = utils.get_processing_step_layout(card_id, selected_value)
+        new_section = utils.get_processing_step_layout(
+            card_id['index'], selected_value)
         return new_section
     return []
 
@@ -219,19 +215,24 @@ def get_body(selected_value, card_id):
           prevent_initial_call=True)
 def download_data(click):
     # build the params file
-    params_file = {'content': json.dumps(json_parameters),
-                   'filename': 'parameters.json'}
+    pipeline_file = {'content': json.dumps(json_parameters),
+                   'filename': 'resurfemg_pipeline.json'}
     # build the csv file with the processed signal to use the dcc.Download
     # element, we need to convert the np array into a dataframe
     emg_ts = variables.get_emg_timeseries()
     if emg_ts is not None:
-        data = emg_ts.to_numpy(signal_io=('env',))
+        if variables.get_custom_pipeline() is not None:
+            data = emg_ts.to_numpy(signal_io=('env_custom',))
+        else:
+            data = emg_ts.to_numpy(signal_io=('env_default',))
+        df = pd.DataFrame(data.transpose(), columns=emg_ts.labels)
+        df['time'] = emg_ts[0].t_data
     else:
         data = np.array([])
-    df = pd.DataFrame(data.transpose())
+        df = pd.DataFrame(data.transpose())
     emg_file = dcc.send_data_frame(df.to_csv, 'emg.csv')
 
-    return params_file, emg_file
+    return pipeline_file, emg_file
 
 
 # expand/shrink raw data column
@@ -262,8 +263,8 @@ def open_column(click, current_width):
           Output('alert-invalid-file', 'is_open'),
           Input('upload-processing-params', 'contents'),
           prevent_initial_call=True)
-def populate_steps(params_file):
-    data = utils.param_file_to_json(params_file)
+def populate_steps(pipeline_file):
+    data = utils.pipeline_file_to_json(pipeline_file)
     # check if the file is correct
     if utils.get_idx_dict_list(data, 'file_identifier', FILE_IDENTIFIER) == 0:
         open_confirmation = True
@@ -283,47 +284,3 @@ def populate_steps(reset_button):
     open_confirmation = True
 
     return open_confirmation
-
-
-# # the user confirms the params upload or the reset button is pressed
-# @callback(
-#         # Output('tail-cut-percent', 'value'),
-#         # Output('tail-cut-tolerance', 'value'),
-#         # Output('base-filter-low', 'value'),
-#         # Output('base-filter-high', 'value'),
-#         # Output({"type": "ecg-filter-select", "index": "0"}, 'value'),
-#         # Output('envelope-extraction-select', 'value'),
-#         Input('confirm-upload', 'submit_n_clicks'),
-#         Input('confirm-reset', 'submit_n_clicks'),
-#         State('upload-processing-params', 'contents'),
-#         prevent_initial_call=True)
-# def populate_steps(confirm_upload, confirm_reset, params_file):
-#     trigger_id = ctx.triggered_id
-
-#     if ((trigger_id == 'confirm-reset' and confirm_reset)
-#           or trigger_id is None):
-#         bandpass_low = definitions.default_bandpass_low
-#        bandpass_high = utils.check_default_cut_fs(
-#            definitions.default_bandpass_high, variables.get_fs_emg())
-#         first_cut_percentage = definitions.default_first_cut_percentage
-#         first_cut_tolerance = definitions.default_first_cut_tolerance
-#         ecg_removal_value = definitions.default_ecg_removal_value
-#         envelope_value = definitions.default_envelope_value
-
-#     if trigger_id == 'confirm-upload' and confirm_upload:
-#         data = utils.param_file_to_json(params_file)
-
-#         first_cut_percentage = data[1]['percentage']
-#         first_cut_tolerance = data[1]['tolerance']
-#         bandpass_low = data[2]['low_fs']
-#         bandpass_high = data[2]['high_fs']
-
-#         ecg_removal = data[4]['method']
-#         ecg_removal_value = utils.get_ecg_removal_value(ecg_removal)
-
-#         envelope = data[-1]['method']
-#         envelope_value = utils.get_envelope_method_value(envelope)
-
-#     if confirm_reset or confirm_upload or trigger_id is None:
-#         return (first_cut_percentage, first_cut_tolerance, bandpass_low,
-#                 bandpass_high, ecg_removal_value, envelope_value)
