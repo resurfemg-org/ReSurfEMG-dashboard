@@ -28,6 +28,8 @@ class Variables:
         self.vent_timeseries = None
         self.emg_processed = None
         self.emg_processed_default = None
+        self.default_pipeline = None
+        self.custom_pipeline = None
 
     def set_emg_filename(self, emg_filename):
         self.emg_filename = emg_filename
@@ -53,12 +55,6 @@ class Variables:
     def get_emg_timeseries(self):
         return self.emg_timeseries
 
-    # def set_ventilator(self, ventilator):
-    #     self.ventilator = ventilator
-
-    # def get_ventilator(self):
-    #     return self.ventilator
-
     def set_vent_timeseries(self, vent_timeseries):
         self.vent_timeseries = vent_timeseries
 
@@ -77,14 +73,15 @@ class Variables:
     def get_fs_vent(self):
         return self.fs_vent
 
-    # def set_emg_processed(self, emg_processed):
-    #     self.emg_processed = emg_processed
+    def set_default_pipeline(self, pipeline):
+        self.default_pipeline = pipeline
 
-    # def get_emg_processed(self):
-    #     return self.emg_processed
+    def get_default_pipeline(self):
+        return self.default_pipeline
 
-    # def set_emg_processed_default(self, emg_processed_default):
-    #     self.emg_processed_default = emg_processed_default
+    def set_custom_pipeline(self, pipeline):
+        self.custom_pipeline = pipeline
 
-    # def get_emg_processed_default(self):
-    #     return self.emg_processed_default
+    def get_custom_pipeline(self):
+        return self.custom_pipeline
+

@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 import trace_updater
 from dash import dcc, html
-from definitions import processing_methods, get_defaults
+from definitions import processing_methods, get_defaults, ProcessTypology
 from plotly_resampler import FigureResampler
 from plotly.subplots import make_subplots
 from typing import Dict
@@ -18,7 +18,7 @@ graph_dict_raw: Dict[str, FigureResampler] = {}
 colors = {
     'white': '#FFFFFF',
     'text': '#091D58',
-    'blue1': '#063446',  # dark blue
+    'blue1': '#000080',  # dark blue
     'blue2': '#0e749b',
     'blue3': '#15b3f0',
     'blue4': '#E4F3F9',  # light blue
@@ -376,17 +376,86 @@ def get_idx_dict_list(dict_list, key, value):
     return idx
 
 
-# # build the json containing the params for the cutter
-# def build_cutter_params_json(
-#         step_number: int, percentage: int, tolerance: int):
-#     data = {
-#         'step_number': step_number,
-#         'step_type': ProcessTypology.CUT.name,
-#         'percentage': percentage,
-#         'tolerance': tolerance
-#     }
+# build the json containing the params for the cutter
+def build_cutter_params_json(
+        step_number: int, percentage: int, tolerance: int):
+    data = {
+        'step_number': step_number,
+        'step_type': ProcessTypology.CUT.name,
+        'percentage': percentage,
+        'tolerance': tolerance
+    }
 
-#     return data
+    return data
+
+
+def parse_preprocessing_options(cards, steps, steps_args, fs_emg):
+    """parse the preprocessing options from the cards and steps"""
+    sel_opts = {}
+    for n, card in enumerate(cards):
+        card_id = int(card['index'])
+        sel_opts[card_id] = {}
+        sel_opts[card_id]['method'] = steps[n]
+        sel_opts[card_id]['args_val'] = {}
+        for item in steps_args[n]:
+            arg_id = item['props']['children'][1]['props']['id']['type']
+            if arg_id.startswith('processing-step-'):
+                arg_name = item['props']['children'][1]['props']['name']
+                arg_value = item['props']['children'][1]['props']['value']
+                sel_opts[card_id]['args_val'][arg_name] = arg_value
+        default_settings = definitions.get_defaults(
+            sel_opts[card_id]['method'], fs_emg)
+        # Assure adequate type for the arguments
+        def_args = default_settings['arg_defaults']
+        for arg_name, arg_value in def_args.items():
+            if arg_name in sel_opts[card_id]['args_val']:
+                if isinstance(arg_value, int):
+                    sel_opts[card_id]['args_val'][arg_name] = int(
+                        sel_opts[card_id]['args_val'][arg_name])
+                elif isinstance(arg_value, float):
+                    sel_opts[card_id]['args_val'][arg_name] = float(
+                        sel_opts[card_id]['args_val'][arg_name])
+                elif isinstance(arg_value, str):
+                    sel_opts[card_id]['args_val'][arg_name] = str(
+                        sel_opts[card_id]['args_val'][arg_name].lower())
+        set_args = default_settings['set_args']
+        for arg_name in set_args:
+            sel_opts[card_id]['args_val'][arg_name] = set_args[arg_name]
+    return sel_opts
+
+
+def apply_processing_pipeline(emg_ts, pipeline, suffix=''):
+    """apply the processing pipeline to the EMG TimeSeries"""
+    filter_methods = definitions.filter_methods
+    ecg_removal_methods = definitions.ecg_removal_methods
+    envelope_methods = definitions.envelope_methods
+    baseline_methods = definitions.baseline_methods
+    sig_order = ['raw', 'filt' +  suffix, 'clean' + suffix, 'env' + suffix,
+                 'baseline' + suffix]
+    _src_sig = 'raw'
+
+    ecg_rem_counter = 0
+    for _, options in pipeline.items():
+        _src_idx = sig_order.index(_src_sig)
+        method = options['method']
+        _out_sig = next((sig for sig, methods in {
+            'filt' + suffix: filter_methods,
+            'clean' + suffix: ecg_removal_methods,
+            'env' + suffix: envelope_methods,
+            'baseline' + suffix: baseline_methods
+        }.items() if method in methods), _src_sig)
+        signal_io = (_src_sig, _out_sig if _out_sig in sig_order[_src_idx:]
+                     else _src_sig)
+        options['args_val']['signal_io'] = signal_io
+        if method in ecg_removal_methods:
+            ecg_peakset_name = 'ecg_' + str(ecg_rem_counter)
+            emg_ts.run('get_ecg_peaks', name=ecg_peakset_name,
+                        overwrite=True)
+            options['args_val']['ecg_peakset_name'] = ecg_peakset_name
+            ecg_rem_counter += 1
+        emg_ts.run(method, **options['args_val'])
+        _src_sig = signal_io[1]
+    return emg_ts
 
 
 def param_file_to_json(param_file):

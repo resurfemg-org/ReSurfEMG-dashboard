@@ -16,7 +16,7 @@ import numpy as np
           Output('emg-filename', 'children'),
           Input('emg-delete-button', 'n_clicks'))
 def show_raw_data(delete):
-    emg_timeseries = variables.get_emg_timeseries()
+    emg_ts = variables.get_emg_timeseries()
     hidden = True
 
     trigger_id = ctx.triggered_id
@@ -27,15 +27,15 @@ def show_raw_data(delete):
         variables.set_emg_timeseries(None)
         children_emg = []
     else:
-        if emg_timeseries is not None:
+        if emg_ts is not None:
             emg_fs = variables.get_fs_emg()
             plot_data, plot_info = utils.update_plot_data(
-                new_data=np.array([ts['raw'] for ts in emg_timeseries]),
+                new_data=emg_ts.to_numpy(signal_io=('raw',)),
                 new_info={'signal': 'Raw', 'color': 'blue', 'secondary': False,
                           'visible': True}
             )
-            titles = [ts.label or 'Channel' for ts in emg_timeseries]
-            units = [ts.y_units or 'AU' for ts in emg_timeseries]
+            titles = emg_ts.labels
+            units = emg_ts.y_units
             children_emg = utils.add_emg_graphs(
                 plot_data, plot_info, emg_fs, titles=titles, units=units)
             hidden = False
@@ -50,7 +50,7 @@ def show_raw_data(delete):
           Output('ventilator-filename', 'children'),
           Input('ventilator-delete-button', 'n_clicks'))
 def show_raw_data(delete):
-    vent_timeseries = variables.get_vent_timeseries()
+    vent_ts = variables.get_vent_timeseries()
     hidden = True
 
     trigger_id = ctx.triggered_id
@@ -61,15 +61,15 @@ def show_raw_data(delete):
         variables.set_vent_timeseries(None)
         children_vent = []
     else:
-        if vent_timeseries is not None:
+        if vent_ts is not None:
             fs_vent = variables.get_fs_vent()
             plot_data, plot_info = utils.update_plot_data(
-                new_data=np.array([ts['raw'] for ts in vent_timeseries]),
+                new_data=vent_ts.to_numpy(signal_io=('raw',)),
                 new_info={'signal': 'Raw', 'color': 'blue', 'secondary': False,
                           'visible': True}
             )
-            titles = [ts.label or 'Channel' for ts in vent_timeseries]
-            units = [ts.y_units or 'AU' for ts in vent_timeseries]
+            titles = vent_ts.labels
+            units = vent_ts.y_units
 
             children_vent = utils.add_ventilator_graphs(
                 plot_data, plot_info, fs_vent, titles=titles, units=units)
