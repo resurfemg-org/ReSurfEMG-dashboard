@@ -270,14 +270,14 @@ def get_breaths(n_channel, start_sample, stop_sample, method):
         emg_ts[n_channel].peaks['breaths'].sanitize()
         peak_df = emg_ts[n_channel].peaks['breaths'].peak_df
 
-        breaths = [Breath(
-            start_sample=int(row['start_idx']),
-            stop_sample=int(row['end_idx']-row['start_idx']),
-            peak_sample=int(row['peak_idx']-row['start_idx']),
-            amplitude=emg[int(row['start_idx']):int(row['end_idx'])],
-            baseline=baseline[
-            int(row['start_idx']):int(row['end_idx'])])
-                for _, row in peak_df.iterrows()]
+        breaths = [
+            Breath(
+                start_sample=int(row['start_idx']),
+                stop_sample=int(row['end_idx']-row['start_idx']),
+                peak_sample=int(row['peak_idx']-row['start_idx']),
+                amplitude=emg[int(row['start_idx']):int(row['end_idx'])],
+                baseline=baseline[int(row['start_idx']):int(row['end_idx'])])
+            for _, row in peak_df.iterrows()]
         return breaths
     return []
 

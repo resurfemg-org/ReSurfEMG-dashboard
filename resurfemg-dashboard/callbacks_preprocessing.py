@@ -64,7 +64,7 @@ def show_data(click, cards, steps, steps_args):
         else:
             custom_pipeline = False
         if def_opts != variables.get_default_pipeline() or not all(
-            key in emg_ts[0] for key in ('clean_default', 'env_default')):
+                key in emg_ts[0] for key in ('clean_default', 'env_default')):
             variables.set_default_pipeline(deepcopy(def_opts))
             emg_ts = utils.apply_processing_pipeline(
                 emg_ts, pipeline=def_opts, suffix='_default')

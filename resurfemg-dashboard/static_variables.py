@@ -84,4 +84,3 @@ class Variables:
 
     def get_custom_pipeline(self):
         return self.custom_pipeline
-
