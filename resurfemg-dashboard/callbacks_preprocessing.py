@@ -74,12 +74,13 @@ def show_data(click, cards, steps, steps_args):
         signals = [
             ('raw', 'Raw', 'black', True, 'legendonly'),
             ('clean_default', 'Filtered (Default)', colors['blue1'], False,
-              'legendonly' if custom_pipeline else True),
+             'legendonly' if custom_pipeline else True),
             ('env_default', 'Envelope (Default)', 'red', False, True)
         ]
         if custom_pipeline:
             if sel_opts != variables.get_custom_pipeline() or not all(
-                key in emg_ts[0] for key in ('clean_custom', 'env_custom')):
+                    key in emg_ts[0] for key in ('clean_custom', 'env_custom')
+                    ):
                 variables.set_custom_pipeline(deepcopy(sel_opts))
                 emg_ts = utils.apply_processing_pipeline(
                     emg_ts, pipeline=sel_opts, suffix='_custom')
@@ -96,7 +97,7 @@ def show_data(click, cards, steps, steps_args):
             plot_data, plot_info = utils.update_plot_data(
                 new_data=emg_ts.to_numpy(signal_io=(signal_io,)),
                 new_info={'signal': signal_name, 'color': color,
-                        'secondary': secondary, 'visible': visibility},
+                          'secondary': secondary, 'visible': visibility},
                 prev_data=plot_data, prev_info=plot_info
             )
 
@@ -184,7 +185,7 @@ def add_step(click, close, confirm_upload, confirm_reset, pipeline_file,
     remove_idx = id_ctx['index']
     for n, el in enumerate(previous_content):
         if (el['type'] == 'Card'
-            and el['props']['id']['index'] == remove_idx):
+                and el['props']['id']['index'] == remove_idx):
             del previous_content[n + 1]  # remove the html.P element
             previous_content.remove(el)  # remove the card
 
@@ -215,7 +216,7 @@ def get_body(selected_value, card_id):
 def download_data(click):
     # build the params file
     pipeline_file = {'content': json.dumps(json_parameters),
-                   'filename': 'resurfemg_pipeline.json'}
+                     'filename': 'resurfemg_pipeline.json'}
     # build the csv file with the processed signal to use the dcc.Download
     # element, we need to convert the np array into a dataframe
     emg_ts = variables.get_emg_timeseries()

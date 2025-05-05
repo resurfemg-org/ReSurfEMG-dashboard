@@ -436,8 +436,8 @@ def apply_processing_pipeline(emg_ts, pipeline, suffix=''):
         'ecg_removal': definitions.ecg_removal_methods,
         'envelope': definitions.envelope_methods,
         'baseline': definitions.baseline_methods}
-    sig_order = ['raw', 'filt' +  suffix, 'clean' + suffix, 'env' + suffix,
-                 'baseline' + suffix]
+    sig_order = ['raw', f'filt{suffix}', f'clean{suffix}', f'env{suffix}',
+                 f'baseline{suffix}']
     _src_sig = 'raw'
 
     ecg_rem_counter = 0
@@ -456,7 +456,7 @@ def apply_processing_pipeline(emg_ts, pipeline, suffix=''):
         if method in methods_div['ecg_removal']:
             ecg_peakset_name = 'ecg_' + str(ecg_rem_counter)
             emg_ts.run('get_ecg_peaks', name=ecg_peakset_name,
-                        overwrite=True)
+                       overwrite=True)
             options['args_val']['ecg_peakset_name'] = ecg_peakset_name
             ecg_rem_counter += 1
         emg_ts.run(method, **options['args_val'])
