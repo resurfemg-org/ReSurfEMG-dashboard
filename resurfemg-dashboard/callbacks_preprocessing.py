@@ -16,7 +16,6 @@ from utils import colors
 from app import variables
 from dash import Input, Output, State, callback, MATCH, ALL, html, ctx, dcc
 from definitions import FILE_IDENTIFIER
-from resurfemg.data_connector.data_classes import EmgDataGroup
 
 card_counter = 0
 json_parameters = []
@@ -225,8 +224,10 @@ def download_data(click):
             data = emg_ts.to_numpy(signal_io=('env_custom',))
         else:
             data = emg_ts.to_numpy(signal_io=('env_default',))
-        df = pd.DataFrame(data.transpose(), columns=emg_ts.labels)
+        df = pd.DataFrame(data.transpose(), columns=[
+            f'{ts.label} ({ts.y_units})' for ts in emg_ts])
         df['time'] = emg_ts[0].t_data
+        df = df.set_index('time')
     else:
         data = np.array([])
         df = pd.DataFrame(data.transpose())
