@@ -7,15 +7,15 @@ This file contains functions to work functions from the ReSurfEMG library.
 
 from copy import deepcopy
 import dash
-import definitions
+from resurfemg_dashboard import definitions
 import json
 import numpy as np
 import pandas as pd
-import utils
-from utils import colors
-from app import variables
+from resurfemg_dashboard import utils
+from resurfemg_dashboard.utils import colors
+from resurfemg_dashboard.app import variables
 from dash import Input, Output, State, callback, MATCH, ALL, html, ctx, dcc
-from definitions import FILE_IDENTIFIER
+from resurfemg_dashboard.definitions import FILE_IDENTIFIER
 
 card_counter = 0
 json_parameters = []

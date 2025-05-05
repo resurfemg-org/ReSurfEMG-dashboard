@@ -7,11 +7,11 @@ This file contains functions to work functions from the ReSurfEMG library.
 
 import dash
 import dash_bootstrap_components as dbc
-import definitions
+from resurfemg_dashboard import definitions
 from dash import html, dcc
 
-import utils
-from definitions import EnvelopeMethod
+from resurfemg_dashboard import utils
+from resurfemg_dashboard.definitions import EnvelopeMethod
 
 dash.register_page(__name__, path='/preprocessing')
 

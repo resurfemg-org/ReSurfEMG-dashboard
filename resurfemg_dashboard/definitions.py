@@ -1,6 +1,6 @@
 from enum import Enum
 import inspect
-from app import variables
+from resurfemg_dashboard.app import variables
 import numpy as np
 from resurfemg.data_connector.data_classes import TimeSeries
 
