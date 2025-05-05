@@ -3,7 +3,7 @@ requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "resurfemg-dashboard"
+name = "resurfemg_dashboard"
 maintainers = [
     {name = "Eline Mos-Oppersma", email = "e.oppersma@utwente.nl"},
     {name = "Rob Warnaar", email = "r.s.p.warnaar@utwente.nl"},
@@ -28,7 +28,7 @@ dependencies = [
     'waitress>=2.1.2',
     'trace_updater',
     'ipywidgets',
-    'resurfemg==1.0.2'
+    'resurfemg>=1.0.2'
 ]
 readme = "README.md"
 dynamic = ["version"]
@@ -47,7 +47,7 @@ tests = ['pytest',
          'ipywidgets']
 
 [tool.setuptools.packages.find]
-include = ["resurfemg-dashboard*"]
+include = ["resurfemg_dashboard*"]
 
 [tool.setuptools_scm]
-version_file = "resurfemg-dashboard/__version__.py"
+version_file = "resurfemg_dashboard/__version__.py"

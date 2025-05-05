@@ -11,14 +11,14 @@ import numpy as np
 import os
 from dash import (Input, Output, callback, ctx, State, html, ALL,
                   callback_context, no_update)
-from app import app, variables
+from resurfemg_dashboard.app import app, variables
 from resurfemg.data_connector import config
 from resurfemg.data_connector import converter_functions as cv
 from resurfemg.data_connector.data_classes import (
     EmgDataGroup, VentilatorDataGroup)
 from pathlib import Path
 from dash.exceptions import PreventUpdate
-from definitions import (
+from resurfemg_dashboard.definitions import (
     PATH_BTN, FILE_PATH_INPUT, PATH_SELECT, CWD, CWD_FILES, CONFIRM_CENTERED,
     MODAL_CENTERED, EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
     LISTED_FILES, VENT_fs_DIV, VENT_SAMPLING_fs,

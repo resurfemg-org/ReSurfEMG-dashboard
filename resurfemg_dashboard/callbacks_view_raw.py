@@ -6,8 +6,8 @@ This file contains functions to work functions from the ReSurfEMG library.
 """
 
 from dash import Input, Output, callback, ctx, State, ALL, callback_context
-from app import app, variables
-import utils
+from resurfemg_dashboard.app import app, variables
+from resurfemg_dashboard import utils
 import numpy as np
 
 

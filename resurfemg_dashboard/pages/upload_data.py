@@ -8,13 +8,11 @@ import os
 
 import dash
 import dash_bootstrap_components as dbc
-from definitions import (PATH_BTN, FILE_PATH_INPUT, PATH_SELECT, CWD,
-                         CWD_FILES, CONFIRM_CENTERED, MODAL_CENTERED,
-                         EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
-                         EMG_SAMPLING_fs, VENT_SAMPLING_fs,
-                         VENT_fs_DIV, EMG_fs_DIV,
-                         VENT_FILE_UPDATED, EMG_FILE_UPDATED, PATH_ERROR,
-                         DIR_FAVORITES)
+from resurfemg_dashboard.definitions import (
+    PATH_BTN, FILE_PATH_INPUT, PATH_SELECT, CWD, CWD_FILES, CONFIRM_CENTERED,
+    MODAL_CENTERED, EMG_OPEN_CENTERED, VENT_OPEN_CENTERED, PARENT_DIR,
+    EMG_SAMPLING_fs, VENT_SAMPLING_fs, VENT_fs_DIV, EMG_fs_DIV,
+    VENT_FILE_UPDATED, EMG_FILE_UPDATED, PATH_ERROR, DIR_FAVORITES)
 from dash import html, dcc
 
 dash.register_page(__name__, path='/')

@@ -8,14 +8,13 @@ This file contains functions to work functions from the ReSurfEMG library.
 import dash
 import dash_bootstrap_components as dbc
 from dash import html, dcc, dash_table
-from definitions import (ComputedFeatures, BreathSelectionMethod,
-                         default_breath_method)
-from definitions import (EMG_FILENAME_FEATURES, FEATURES_COMPUTE_BTN,
-                         FEATURES_EMG_GRAPH_DIV, FEATURES_DOWNLOAD_BTN,
-                         FEATURES_DOWNLOAD_DCC, FEATURES_DOWNLOAD_TOOLTIP,
-                         FEATURES_COMPUTE_TOOLTIP, FEATURES_LOADING,
-                         LOAD_FEATURES_DIV, FEATURES_SELECT_LEAD,
-                         FEATURES_SELECT_COMPUTATION, FEATURES_TABLE)
+from resurfemg_dashboard.definitions import (
+    ComputedFeatures, BreathSelectionMethod, default_breath_method)
+from resurfemg_dashboard.definitions import (
+    EMG_FILENAME_FEATURES, FEATURES_COMPUTE_BTN, FEATURES_EMG_GRAPH_DIV,
+    FEATURES_DOWNLOAD_BTN, FEATURES_DOWNLOAD_DCC, FEATURES_DOWNLOAD_TOOLTIP,
+    FEATURES_COMPUTE_TOOLTIP, FEATURES_LOADING, LOAD_FEATURES_DIV,
+    FEATURES_SELECT_LEAD, FEATURES_SELECT_COMPUTATION, FEATURES_TABLE)
 
 
 dash.register_page(__name__, path='/features')

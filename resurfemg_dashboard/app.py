@@ -1,6 +1,7 @@
+import resurfemg_dashboard as dashboard
 from dash import Dash
 import dash_bootstrap_components as dbc
-import static_variables
+from resurfemg_dashboard import static_variables
 
 variables = static_variables.get_singleton()
 FONT_AWESOME = "https://use.fontawesome.com/releases/v5.13.0/css/all.css"

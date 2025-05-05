@@ -13,11 +13,11 @@ This dashboard requires that you have an environment with certain dependencies i
    * The commands for Windows users can be something like:
      `python -m venv .venv_dashboard`
      `.venv_dashboard\Scripts\active`
-     `pip install -r requirements.txt`
+     `pip install resurfemg_dashboard`
    * Linux users can create their own environment by hand.
 
-Once you have entered an environment with the necessary packages, run python index.py and a url for the dashboard should appear in your terminal (open the url). 
-    `python index.py`.
+Once you have entered an environment with the necessary packages, run the resurfemg_dashboard module with Python and a url for the dashboard should appear in your terminal (open the url). 
+    `python -m resurfemg_dashboard`.
 
 ## Building executable file
 

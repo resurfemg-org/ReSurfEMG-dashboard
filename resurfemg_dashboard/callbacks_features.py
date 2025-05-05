@@ -8,16 +8,17 @@ This file contains functions to work functions from the ReSurfEMG library.
 from typing import List
 
 from dash import Input, Output, callback, dcc, ctx, State
-from app import app, variables
+from resurfemg_dashboard.app import app, variables
 from resurfemg.postprocessing import features as feat
 from resurfemg import helper_functions as hf
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import utils
-from definitions import (ComputedFeatures, FEATURES_COMPUTE_BTN,
-                         FEATURES_DOWNLOAD_BTN, FEATURES_DOWNLOAD_DCC)
-from definitions import (
+from resurfemg_dashboard import utils
+from resurfemg_dashboard.definitions import (
+    ComputedFeatures, FEATURES_COMPUTE_BTN, FEATURES_DOWNLOAD_BTN,
+    FEATURES_DOWNLOAD_DCC)
+from resurfemg_dashboard.definitions import (
     EMG_FILENAME_FEATURES, FEATURES_EMG_GRAPH, FEATURES_EMG_GRAPH_DIV,
     FEATURES_SELECT_LEAD, LOAD_FEATURES_DIV, FEATURES_TABLE,
     FEATURES_SELECT_COMPUTATION)

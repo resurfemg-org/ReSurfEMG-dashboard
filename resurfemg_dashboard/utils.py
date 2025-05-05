@@ -1,12 +1,13 @@
 import base64
 import dash_bootstrap_components as dbc
-import definitions
+from resurfemg_dashboard import definitions
 import json
 import numpy as np
 import plotly.graph_objects as go
 import trace_updater
 from dash import dcc, html
-from definitions import processing_methods, get_defaults, ProcessTypology
+from resurfemg_dashboard.definitions import (
+    processing_methods, get_defaults, ProcessTypology)
 from plotly_resampler import FigureResampler
 from plotly.subplots import make_subplots
 from typing import Dict

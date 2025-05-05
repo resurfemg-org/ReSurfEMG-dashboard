@@ -1,14 +1,14 @@
 # Run this app with `python index.py` and
 # visit http://127.0.0.1:8050/ in your web browser.
 import base64
-import callbacks_update_data
-import callbacks_view_raw
-import callbacks_preprocessing
-import callbacks_features
+from resurfemg_dashboard import callbacks_update_data
+from resurfemg_dashboard import callbacks_view_raw
+from resurfemg_dashboard import callbacks_preprocessing
+from resurfemg_dashboard import callbacks_features
 import dash
 import dash_bootstrap_components as dbc
 from dash import html
-from app import app
+from resurfemg_dashboard.app import app
 
 server = app.server
 
