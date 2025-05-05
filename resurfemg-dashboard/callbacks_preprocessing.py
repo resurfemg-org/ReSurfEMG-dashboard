@@ -5,12 +5,14 @@ Licensed under the Apache License, version 2.0. See LICENSE for details.
 This file contains functions to work functions from the ReSurfEMG library.
 """
 
+from copy import deepcopy
 import dash
 import definitions
 import json
 import numpy as np
 import pandas as pd
 import utils
+from utils import colors
 from app import variables
 from dash import Input, Output, State, callback, MATCH, ALL, html, ctx, dcc
 from definitions import FILE_IDENTIFIER
@@ -51,9 +53,6 @@ def show_data(click, cards, steps, steps_args):
     emg_ts = variables.get_emg_timeseries()
     fs = variables.get_fs_emg()
 
-    # we have to make sure that the cut-off frequencies are in an acceptable
-    # range
-    # high_freq = utils.check_default_cut_fs(high_freq_default, fs)
     trigger = ctx.triggered_id
     # Set the default processing pipeline
     default_settings = definitions.get_default_pipeline(fs_emg=2048)
@@ -68,120 +67,49 @@ def show_data(click, cards, steps, steps_args):
         for arg_name in set_args:
             def_opts[i]['args_val'][arg_name] = set_args[arg_name]
 
-    if trigger is not None:
-        # Process the set processing pipeline
-        sel_opts = {}
-        for n, card in enumerate(cards):
-            card_id = int(card['index'])
-            sel_opts[card_id] = {}
-            sel_opts[card_id]['method'] = steps[n]
-            sel_opts[card_id]['args_val'] = {}
-            for item in steps_args[n]:
-                arg_id = item['props']['children'][1]['props']['id']['type']
-                if arg_id.startswith('processing-step-'):
-                    arg_name = item['props']['children'][1]['props']['name']
-                    arg_value = item['props']['children'][1]['props']['value']
-                    sel_opts[card_id]['args_val'][arg_name] = arg_value
-            default_settings = definitions.get_defaults(
-                sel_opts[card_id]['method'])
-            # Assure adequate type for the arguments
-            def_args = default_settings['arg_defaults']
-            for arg_name, arg_value in def_args.items():
-                if arg_name in sel_opts[card_id]['args_val']:
-                    if isinstance(arg_value, int):
-                        sel_opts[card_id]['args_val'][arg_name] = int(
-                            sel_opts[card_id]['args_val'][arg_name])
-                    elif isinstance(arg_value, float):
-                        sel_opts[card_id]['args_val'][arg_name] = float(
-                            sel_opts[card_id]['args_val'][arg_name])
-                    elif isinstance(arg_value, str):
-                        sel_opts[card_id]['args_val'][arg_name] = str(
-                            sel_opts[card_id]['args_val'][arg_name].lower())
-            set_args = default_settings['set_args']
-            for arg_name in set_args:
-                sel_opts[card_id]['args_val'][arg_name] = set_args[arg_name]
-        custom_pipeline = def_opts != sel_opts
-    else:
-        custom_pipeline = False
 
     # if data have been loaded, apply the processing
     if emg_ts is not None:
-        # apply cut
-        # emg_cut = hf.bad_end_cutter_for_samples(
-        #   emg_data, cut_percent, cut_tolerance)
-        # json_parameters.append(utils.build_cutter_params_json(
-        #   1, cut_percent, cut_tolerance))
-        ecg_removal_methods = definitions.ecg_removal_methods
-        ecg_rem_counter = 0
-        for i, options in def_opts.items():
-            method = options['method']
-            if method in ecg_removal_methods:
-                ecg_peakset_name = 'ecg_' + str(ecg_rem_counter)
-                emg_ts.run('get_ecg_peaks', name=ecg_peakset_name,
-                           overwrite=True)
-                options['args_val']['ecg_peakset_name'] = ecg_peakset_name
-                ecg_rem_counter += 1
-            emg_ts.run(method, **options['args_val'])
+        if trigger is not None:
+            # Process the selected processing pipeline
+            sel_opts = utils.parse_preprocessing_options(
+                cards, steps, steps_args, fs_emg=fs)
+            custom_pipeline = def_opts != sel_opts
+        else:
+            custom_pipeline = False
+        if def_opts != variables.get_default_pipeline() or not all(
+            key in emg_ts[0] for key in ('clean_default', 'env_default')):
+            variables.set_default_pipeline(deepcopy(def_opts))
+            emg_ts = utils.apply_processing_pipeline(
+                emg_ts, pipeline=def_opts, suffix='_default')
+        titles = emg_ts.labels
+        units = emg_ts.y_units
 
-        variables.set_emg_timeseries(emg_ts)
-
-        titles = [ts.label for ts in emg_ts]
-        units = [ts.y_units for ts in emg_ts]
-
-        plot_data, plot_info = utils.update_plot_data(
-            new_data=np.array([ts['raw'] for ts in emg_ts]),
-            new_info={'signal': 'Raw', 'color': 'black', 'secondary': True,
-                      'visible': 'legendonly'},
-        )
-        plot_data, plot_info = utils.update_plot_data(
-            new_data=np.array([ts['clean'] for ts in emg_ts]),
-            new_info={'signal': 'Filtered', 'color': 'blue',
-                      'secondary': False,
-                      'visible': 'legendonly' if custom_pipeline else True},
-            prev_data=plot_data, prev_info=plot_info
-        )
-        plot_data, plot_info = utils.update_plot_data(
-            new_data=np.array([ts['env'] for ts in emg_ts]),
-            new_info={'signal': 'Envelope', 'color': 'red', 'secondary': False,
-                      'visible': 'legendonly' if custom_pipeline else True},
-            prev_data=plot_data, prev_info=plot_info
-        )
-        fs = emg_ts.param['fs'] if 'fs' in emg_ts.param else None
-
+        signals = [
+            ('raw', 'Raw', 'black', True, 'legendonly'),
+            ('clean_default', 'Filtered (Default)', colors['blue1'], False,
+              'legendonly' if custom_pipeline else True),
+            ('env_default', 'Envelope (Default)', 'red', False, True)
+        ]
         if custom_pipeline:
-            emg_raw = np.array([ts['raw'] for ts in emg_ts])
-            emg_ts_custom = EmgDataGroup(
-                emg_raw, fs=fs, labels=titles, units=units)
-            ecg_rem_counter = 0
-            for i, options in sel_opts.items():
-                method = options['method']
-                if method in ecg_removal_methods:
-                    ecg_peakset_name = 'ecg_' + str(ecg_rem_counter)
-                    emg_ts_custom.run('get_ecg_peaks',
-                                      name=ecg_peakset_name,
-                                      overwrite=True)
-                    options['args_val']['ecg_peakset_name'] = ecg_peakset_name
-                    ecg_rem_counter += 1
-                emg_ts_custom.run(method, **options['args_val'])
-
+            if sel_opts != variables.get_custom_pipeline() or not all(
+                key in emg_ts[0] for key in ('clean_custom', 'env_custom')):
+                variables.set_custom_pipeline(deepcopy(sel_opts))
+                emg_ts = utils.apply_processing_pipeline(
+                    emg_ts, pipeline=sel_opts, suffix='_custom')
+            signals.append(
+                ('clean_custom', 'Filtered', 'blue', False, True))
+            signals.append(
+                ('env_custom', 'Envelope', 'orange', False, True))
+        plot_data = None
+        plot_info = None
+        for signal_io, signal_name, color, secondary, visibility in signals:
             plot_data, plot_info = utils.update_plot_data(
-                new_data=np.array([ts['clean'] for ts in emg_ts_custom]),
-                new_info={
-                    'signal': 'Filtered (custom)', 'color': 'cyan',
-                    'secondary': False,
-                    'visible': True},
+                new_data=emg_ts.to_numpy(signal_io=(signal_io,)),
+                new_info={'signal': signal_name, 'color': color,
+                        'secondary': secondary, 'visible': visibility},
                 prev_data=plot_data, prev_info=plot_info
             )
-            plot_data, plot_info = utils.update_plot_data(
-                new_data=np.array([ts['env'] for ts in emg_ts_custom]),
-                new_info={
-                    'signal': 'Envelope (custom)', 'color': 'orange',
-                    'secondary': False,
-                    'visible': True},
-                prev_data=plot_data, prev_info=plot_info
-            )
-            #         json_parameters.append(utils.build_highpass_params_json(
-            #             len(json_parameters) + 1, low_cut))
 
         children_emg = utils.add_emg_graphs(
             plot_data, plot_info, fs, titles, units)
@@ -297,7 +225,7 @@ def download_data(click):
     # element, we need to convert the np array into a dataframe
     emg_ts = variables.get_emg_timeseries()
     if emg_ts is not None:
-        data = np.array([ts['env'] for ts in emg_ts])
+        data = emg_ts.to_numpy(signal_io=('env',))
     else:
         data = np.array([])
     df = pd.DataFrame(data.transpose())

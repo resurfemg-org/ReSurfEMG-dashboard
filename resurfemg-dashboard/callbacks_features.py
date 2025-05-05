@@ -62,7 +62,7 @@ def show_filename(data):
     """
     emg_ts = variables.get_emg_timeseries()
     if emg_ts is not None:
-        data = np.array([ts['env'] for ts in emg_ts])
+        data = emg_ts.to_numpy(signal_io=('env',))
 
     if data is not None:
         options = [{'label': 'Lead ' + str(n), 'value': n}
@@ -80,7 +80,7 @@ def show_graph(value):
     """
     emg_ts = variables.get_emg_timeseries()
     if emg_ts is not None:
-        data = np.array([ts['env'] for ts in emg_ts])
+        data = emg_ts.to_numpy(signal_io=('env',))
         if value is not None:
             lead = data[int(value)]
             time_array = utils.get_time_array(

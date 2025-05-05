@@ -228,7 +228,19 @@ input_types = {
     bool: 'checkbox',
 }
 
+filter_methods = [
+    'filter_emg',
+]
+
 ecg_removal_methods = [
     'gating',
     'wavelet_denoising',
+]
+
+envelope_methods = [
+    'envelope',
+]
+
+baseline_methods = [
+    'baseline',
 ]
