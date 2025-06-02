@@ -6,25 +6,25 @@ Dashboard to use the ReSurfEMG library
 
 ## Getting started
 
-This dashboard requires that you have an environment with certain dependencies including dash. We recommend that you do the following:
-
-    Install all Python packages required, using conda and the
-    `environment.yml` file.
+1) This dashboard requires that you have an environment with certain dependencies including dash. We recommend that you do the following:
    * For Windows users:
-
-     `python -m venv .venv_dashboard`
-     `.venv_dashboard\Scripts\active`
-     `pip install resurfemg_dashboard`
+     ``` sh
+     python -m venv .venv_dashboard
+     .venv_dashboard\Scripts\active
+     pip install resurfemg_dashboard
+     ```
 
    * For Linux/OSx users:
+     ``` sh 
+     python3 -m venv .venv_dashboard
+     source .venv_dashboard/bin/active
+     python3 -m pip install resurfemg_dashboard
+     ```
 
-     `python3 -m venv .venv_dashboard`
-     `source .venv_dashboard/bin/active` 
-     `python3 -m pip install resurfemg_dashboard`
-
-
-Once you have entered an environment with the necessary packages, run the resurfemg_dashboard module with Python and a url for the dashboard should appear in your terminal (open the url). 
-    `python -m resurfemg_dashboard`
+2) Once you have entered an environment with the necessary packages, run the resurfemg_dashboard module with Python and a url for the dashboard should appear in your terminal (open the url).
+    ``` sh
+    python -m resurfemg_dashboard
+    ```
     (For Linux/OSc use: `python3`)
 
 ## Building executable file
@@ -32,8 +32,14 @@ Once you have entered an environment with the necessary packages, run the resurf
 To ease the distribution and the use of the ReSurfEMG Dashboard, it is possible to build an executable file, through the following steps:
 
 - Activate the virtual environment 
-- Install the PyInstaller by running `pip install pyinstaller`
-- Run `pyinstaller main.spec`
+- Install the PyInstaller by running
+    ``` sh
+    pip install pyinstaller
+    ```
+- Run
+    ``` sh
+    pyinstaller resurfemg_dashboard/main.spec
+    ```
 
 If the process is successful, the resurfemg_dashboard.exe file can be found in the /dist/main folder. By launching the executable file, the dashboard will be prompted. 
 
