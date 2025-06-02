@@ -25,7 +25,7 @@ Dashboard to use the ReSurfEMG library
     ``` sh
     python -m resurfemg_dashboard
     ```
-    (For Linux/OSc use: `python3`)
+    (For Linux/OSx use: `python3`)
 
 ## Building executable file
 
