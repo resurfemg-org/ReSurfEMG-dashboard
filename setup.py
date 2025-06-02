@@ -75,7 +75,7 @@ class TestCommand(Command):
 
     def sources(self):
         return glob(
-            os.path.join(project_dir, '**/*.py'),
+            os.path.join(project_dir, 'resurfemg_dashboard', '**.py'),
             recursive=True,
         ) + [os.path.join(project_dir, 'setup.py')]
 
@@ -152,7 +152,7 @@ class Pep8(TestCommand):
                     sys.stderr.write(str(report.total_errors) + '\n')
                 sys.exit(1)
             sys.exit(0)
-
+        print(self.sources())
         sys.exit(
             subprocess.call(
                 [env_python, '-m', 'pycodestyle'] + self.sources(),

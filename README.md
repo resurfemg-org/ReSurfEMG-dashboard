@@ -10,14 +10,22 @@ This dashboard requires that you have an environment with certain dependencies i
 
     Install all Python packages required, using conda and the
     `environment.yml` file.
-   * The commands for Windows users can be something like:
+   * For Windows users:
+
      `python -m venv .venv_dashboard`
      `.venv_dashboard\Scripts\active`
      `pip install resurfemg_dashboard`
-   * Linux users can create their own environment by hand.
+
+   * For Linux/OSx users:
+
+     `python3 -m venv .venv_dashboard`
+     `source .venv_dashboard/bin/active` 
+     `python3 -m pip install resurfemg_dashboard`
+
 
 Once you have entered an environment with the necessary packages, run the resurfemg_dashboard module with Python and a url for the dashboard should appear in your terminal (open the url). 
-    `python -m resurfemg_dashboard`.
+    `python -m resurfemg_dashboard`
+    (For Linux/OSc use: `python3`)
 
 ## Building executable file
 
@@ -31,6 +39,6 @@ If the process is successful, the resurfemg_dashboard.exe file can be found in t
 
 N.B. The dist folder containing the executable file should be created and uploaded when a new release of the dashboard is created.
 
-## Linting work you want to add
+## Testing
 
-Build the environment in the `environment_lint.yml` and enter it. You should then be able to use the `python setup.py lint` command. With care in the proper situation you may also use the `--fast` option. 
+Linting tests are included in this project. Build the environment in the `pyproject.toml` and enter it. You should then be able to use the `python setup.py lint` command. With care in the proper situation you may also use the `--fast` option. 
