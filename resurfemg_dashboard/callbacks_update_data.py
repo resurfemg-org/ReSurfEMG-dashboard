@@ -131,6 +131,8 @@ def get_parent_directory_emg(selected_path, n_clicks, cwd, path_btn):
         ('Home', os.getcwd(), '🏠'),
         ('User', os.path.expanduser('~'), '👤'),
         ('Computer', os.path.abspath(os.sep), '💻'),
+        ('Sample data', os.path.join(os.path.dirname(__file__), 'resources',
+                                     'sample_data'), '📂'),
     ]
     _config = config.Config(verbose=False)
     config_paths = _config.get_config()
