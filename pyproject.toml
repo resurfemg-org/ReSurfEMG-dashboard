@@ -49,5 +49,10 @@ tests = ['pytest',
 [tool.setuptools.packages.find]
 include = ["resurfemg_dashboard*"]
 
+
+[tool.setuptools.package-data]
+"resurfemg_dashboard" = ["resources/*"]
+
+
 [tool.setuptools_scm]
 version_file = "resurfemg_dashboard/__version__.py"

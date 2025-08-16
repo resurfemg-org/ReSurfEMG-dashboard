@@ -9,11 +9,13 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import html
 from resurfemg_dashboard.app import app
+import os
 
 server = app.server
 
 # static images
-image_filename = 'resources/resurfemg.png'
+image_filename = os.path.join(os.path.dirname(__file__),
+                              'resources', 'resurfemg.png')
 # pylint: disable=consider-using-with
 encoded_image = base64.b64encode(open(image_filename, 'rb').read())
 
