@@ -10,15 +10,15 @@ Dashboard to use the ReSurfEMG library
    * For Windows users:
      ``` sh
      python -m venv .venv_dashboard
-     .venv_dashboard\Scripts\active
-     pip install resurfemg_dashboard
+     .venv_dashboard\Scripts\activate
+     pip install PATH_TO_DASHBOARD
      ```
 
    * For Linux/OSx users:
      ``` sh 
      python3 -m venv .venv_dashboard
-     source .venv_dashboard/bin/active
-     python3 -m pip install resurfemg_dashboard
+     source .venv_dashboard/bin/activate
+     python3 -m pip install PATH_TO_DASHBOARD
      ```
 
 2) Once you have entered an environment with the necessary packages, run the resurfemg_dashboard module with Python and a url for the dashboard should appear in your terminal (open the url).
@@ -29,6 +29,7 @@ Dashboard to use the ReSurfEMG library
 
 ## Building executable file
 
+! WARNING The executable is work-in-progress, and might not work as expected !
 To ease the distribution and the use of the ReSurfEMG Dashboard, it is possible to build an executable file, through the following steps:
 
 - Activate the virtual environment 
